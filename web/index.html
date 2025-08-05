@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>ASCII Streamer</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Realtime ASCII Stream</h1>
+        <div class="controls">
+            <button id="startBtn">Start Stream</button>
+            <label for="resolution">Resolution:</label>
+            <select id="resolution">
+                <option value="80x60">80x60</option>
+                <option value="120x90" selected>120x90</option>
+                <option value="160x120">160x120</option>
+            </select>
+        </div>
+        <pre id="asciiOutput"></pre>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>

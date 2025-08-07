@@ -6,9 +6,11 @@ class VideoSource
 {
 public:
     VideoSource();
+    ~VideoSource();
     bool is_available() const;
     cv::Mat capture_frame();
     void set_resolution(int width, int height);
+    void close();
     
 private:
     cv::VideoCapture cap_;

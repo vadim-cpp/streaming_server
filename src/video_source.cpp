@@ -10,6 +10,19 @@ VideoSource::VideoSource()
     cap_.set(cv::CAP_PROP_FRAME_HEIGHT, height_);
 }
 
+VideoSource::~VideoSource() 
+{
+    close();
+}
+
+void VideoSource::close()
+{
+    if (cap_.isOpened()) 
+    {
+        cap_.release();
+    }
+}
+
 bool VideoSource::is_available() const 
 {
     return cap_.isOpened();

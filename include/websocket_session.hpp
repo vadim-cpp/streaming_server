@@ -16,6 +16,7 @@ class websocket_session : public std::enable_shared_from_this<websocket_session>
 {
 public:
     explicit websocket_session(beast::tcp_stream stream);
+    ~websocket_session();
     void run(http::request<http::string_body> req);
 
 private:
@@ -27,6 +28,8 @@ private:
     void handle_config(const std::string& json);
     void start_streaming();
     void send_next_frame();
+
+    void release_camera();
 
     websocket::stream<beast::tcp_stream> ws_;
     beast::flat_buffer buffer_;

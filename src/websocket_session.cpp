@@ -19,6 +19,15 @@ websocket_session::websocket_session(beast::tcp_stream stream)
     ascii_converter_ = std::make_unique<AsciiConverter>();
 }
 
+websocket_session::~websocket_session() 
+{
+    if (video_source_) 
+    {
+        video_source_.reset();
+    }
+    frame_timer_.cancel();
+}
+
 void websocket_session::run(http::request<http::string_body> req) 
 {
     // Устанавливаем таймауты
@@ -72,12 +81,27 @@ void websocket_session::on_read(beast::error_code ec, size_t)
         return;
     }
 
-        auto message = beast::buffers_to_string(buffer_.data());
+    auto message = beast::buffers_to_string(buffer_.data());
     
-    // Проверяем конфигурационное сообщение
-    if (message.find("\"type\":\"config\"") != std::string::npos) {
+    // Обработка конфигурации
+    if (message.find("\"type\":\"config\"") != std::string::npos) 
+    {
         handle_config(message);
         buffer_.consume(buffer_.size());
+        return;
+    }
+    
+    // Обработка команды остановки
+    if (message.find("\"type\":\"stop\"") != std::string::npos) 
+    {
+        is_streaming_ = false;
+        frame_timer_.cancel();
+        release_camera();
+        
+        ws_.async_write(net::buffer("Stream stopped"),
+            [self = shared_from_this()](beast::error_code ec, size_t) {
+                if (!ec) self->do_read();
+            });
         return;
     }
     
@@ -97,8 +121,21 @@ void websocket_session::on_read(beast::error_code ec, size_t)
         });
 }
 
+void websocket_session::release_camera()
+{
+    if (video_source_) 
+    {
+        video_source_->close();
+        video_source_.reset();
+    }
+}
+
 void websocket_session::on_close(beast::error_code ec) 
 {
+    is_streaming_ = false;
+    frame_timer_.cancel();
+    release_camera();
+    
     if(ec && ec != beast::errc::not_connected) 
     {
         std::cerr << "Close error: " << ec.message() << "\n";
@@ -124,10 +161,11 @@ void websocket_session::handle_config(const std::string& json)
                 fps_ = j["fps"];
             }
             
-            // Настраиваем источник видео
+            // Пересоздаем видео источник при новой конфигурации
+            release_camera();
+            video_source_ = std::make_unique<VideoSource>();
             video_source_->set_resolution(frame_width_ * 2, frame_height_ * 2);
             
-            // Запускаем стриминг
             start_streaming();
         }
     } 
@@ -139,9 +177,27 @@ void websocket_session::handle_config(const std::string& json)
 
 void websocket_session::start_streaming() 
 {
-    if (!video_source_->is_available()) {
-        // Отправляем ошибку клиенту
-        ws_.async_write(net::buffer("Error: Video source not available"));
+    if (is_streaming_) return;
+    
+    if (!video_source_) 
+    {
+        try 
+        {
+            video_source_ = std::make_unique<VideoSource>();
+            video_source_->set_resolution(frame_width_ * 2, frame_height_ * 2);
+        } 
+        catch (const std::exception& e) 
+        {
+            ws_.async_write(net::buffer("Error: " + std::string(e.what())),
+                [](beast::error_code, size_t) {});
+            return;
+        }
+    }
+    
+    if (!video_source_->is_available()) 
+    {
+        ws_.async_write(net::buffer("Error: Video source not available")),
+            [](beast::error_code, size_t) {};
         return;
     }
     

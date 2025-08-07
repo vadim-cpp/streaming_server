@@ -14,6 +14,15 @@ class AsciiStreamer
 
     start() 
     {
+        if (this.isStreaming) return;
+
+        this.updateUI(true);
+        this.output.textContent = "Starting stream...";
+    
+        this.isStreaming = true;
+        document.getElementById('startBtn').textContent = 'Stop Stream';
+        this.output.textContent = "Connecting...";
+
         const resolution = document.getElementById('resolution').value;
         const fps = 10; 
         
@@ -43,15 +52,36 @@ class AsciiStreamer
 
     stop() 
     {
-        if(this.ws) 
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) 
         {
-            this.ws.close();
-            this.ws = null;
+            // Отправляем команду остановки серверу
+            this.ws.send(JSON.stringify({ type: 'stop' }));
+            
+            // Закрываем соединение после небольшой задержки
+            setTimeout(() => {
+                if (this.ws) {
+                    this.ws.close();
+                    this.ws = null;
+                }
+                this.updateUI(false);
+            }, 300);
+        } 
+        else 
+        {
+            this.updateUI(false);
         }
+    }
 
-        document.getElementById('startBtn').textContent = 'Start Stream';
-        this.isStreaming = false;
-        this.output.textContent = "Stream stopped";
+    updateUI(isStreaming)
+    {
+        document.getElementById('startBtn').textContent = 
+            isStreaming ? 'Stop Stream' : 'Start Stream';
+        this.isStreaming = isStreaming;
+        
+        if (!isStreaming) 
+        {
+            this.output.textContent = "Stream stopped";
+        }
     }
 }
 

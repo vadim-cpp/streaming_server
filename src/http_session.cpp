@@ -25,7 +25,8 @@ void http_session::do_read()
 {
     request_ = {};
     http::async_read(socket_, buffer_, request_,
-        [self = shared_from_this()](beast::error_code ec, size_t bytes) {
+        [self = shared_from_this()](beast::error_code ec, size_t bytes) 
+        {
             if(ec) return;
             
             if(beast::websocket::is_upgrade(self->request_)) 

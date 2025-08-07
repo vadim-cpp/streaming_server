@@ -1,14 +1,37 @@
-Сборка проекта:
-mkdir build
-cd build
-cmake ..
+Данное ПО представляет собой сервер для потоковой передачи ASCII-графики через WebSocket с веб-интерфейсом
 
-Компиляция:
-Пуск → Visual Studio 2022 → x64 Native Tools Command Prompt
-cd C:\Users\vadim_25\Desktop\web_cpp\build
-cmake --build . --config Release
+# Инструкция по запуску CMake
 
-Запуск:
-cd Release
-copy /Y ..\..\web\* .
-server.exe
+## Описание
+
+Этот проект использует CMake для управления сборкой. Следуйте приведенным ниже инструкциям, чтобы собрать и запустить проект на вашей машине.
+
+## Требования
+
+Перед началом убедитесь, что у вас установлены следующие инструменты:
+
+- [CMake](https://cmake.org/download/) (версия 3.15 или выше)
+- [Visual Studio](https://visualstudio.microsoft.com/) (или другой компилятор C++)
+- [vcpkg](https://github.com/microsoft/vcpkg) для управления зависимостями
+
+Установите необходимые библиотеки через vcpkg:
+    ./vcpkg install opencv
+    ./vcpkg install boost
+    ./vcpkg install nlohmann-json
+
+## Сборка проекта
+
+1. Создайте директорию для сборки:
+    mkdir build
+    cd build 
+
+2. Запустите CMake для генерации файлов сборки:
+    Если вы используете Visual Studio, вы можете указать генератор
+    cmake .. -G "Visual Studio 17 2022"
+
+3.  Соберите проект:
+    cmake --build . --config Release
+
+## Запуск
+
+После успешной сборки исполняемый файл (server.exe) будет находиться в директории build.

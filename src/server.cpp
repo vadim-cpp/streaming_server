@@ -41,7 +41,8 @@ void server::do_accept()
 }
 
 std::shared_ptr<server> make_server(
-    net::io_context& ioc, tcp::endpoint endpoint, std::string doc_root) {
+    net::io_context& ioc, tcp::endpoint endpoint, std::string doc_root) 
+{
     auto srv = std::make_shared<server>(ioc, endpoint, doc_root);
     srv->run();
     return srv;

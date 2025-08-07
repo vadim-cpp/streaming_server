@@ -1,5 +1,7 @@
-class AsciiStreamer {
-    constructor() {
+class AsciiStreamer 
+{
+    constructor() 
+    {
         this.output = document.getElementById('asciiOutput');
         this.ws = null;
         this.isStreaming = false;
@@ -10,18 +12,20 @@ class AsciiStreamer {
         });
     }
 
-    start() {
+    start() 
+    {
         const resolution = document.getElementById('resolution').value;
+        const fps = 10; 
+        
         this.ws = new WebSocket(`ws://${window.location.host}/stream`);
         
         this.ws.onopen = () => {
             this.ws.send(JSON.stringify({ 
-                type: 'config', 
-                resolution: resolution 
+                type: 'config',
+                resolution: resolution,
+                fps: fps
             }));
-            document.getElementById('startBtn').textContent = 'Stop Stream';
-            this.isStreaming = true;
-        };
+        }
 
         this.ws.onmessage = (event) => {
             this.output.textContent = event.data;
@@ -37,11 +41,14 @@ class AsciiStreamer {
         };
     }
 
-    stop() {
-        if(this.ws) {
+    stop() 
+    {
+        if(this.ws) 
+        {
             this.ws.close();
             this.ws = null;
         }
+
         document.getElementById('startBtn').textContent = 'Start Stream';
         this.isStreaming = false;
         this.output.textContent = "Stream stopped";

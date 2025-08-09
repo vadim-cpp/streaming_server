@@ -41,7 +41,9 @@ set(SERVER_SOURCES
 set(TEST_SOURCES
     tests/tests_main.cpp
     tests/test_ascii_converter.cpp
+    tests/test_video_source.cpp
     src/ascii_converter.cpp
+    src/video_source.cpp
 )
 
 # Создание исполняемого файла для сервера
@@ -103,6 +105,8 @@ if(BUILD_TESTS)
     target_link_libraries(tests PRIVATE
         Boost::system
         GTest::gtest_main
+        GTest::gmock
+        GTest::gmock_main
         ${OpenCV_LIBS}
         nlohmann_json::nlohmann_json
     )

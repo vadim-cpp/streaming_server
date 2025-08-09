@@ -18,6 +18,7 @@
     ./vcpkg install opencv
     ./vcpkg install boost
     ./vcpkg install nlohmann-json
+    ./vcpkg install gtest
 
 ## Сборка проекта
 

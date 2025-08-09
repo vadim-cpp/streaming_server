@@ -27,8 +27,8 @@ find_package(Boost 1.70 REQUIRED COMPONENTS system thread)
 # Поиск nlohmann-json
 find_package(nlohmann_json REQUIRED)
 
-# Список исходных файлов
-set(SOURCES
+# Список исходных файлов для сервера
+set(SERVER_SOURCES
     src/main.cpp
     src/server.cpp
     src/http_session.cpp
@@ -37,21 +37,28 @@ set(SOURCES
     src/ascii_converter.cpp
 )
 
-# Создание исполняемого файла
-add_executable(server ${SOURCES})
+# Список исходных файлов для тестов
+set(TEST_SOURCES
+    tests/tests_main.cpp
+    tests/test_ascii_converter.cpp
+    src/ascii_converter.cpp
+)
+
+# Создание исполняемого файла для сервера
+add_executable(server ${SERVER_SOURCES})
 
 # Подключение заголовочных файлов
 target_include_directories(server PRIVATE 
     include
-    ${OpenCV_INCLUDE_DIRS}    # Добавляем заголовки OpenCV
+    ${OpenCV_INCLUDE_DIRS}
 )
 
 # Линковка с библиотеками
 target_link_libraries(server PRIVATE 
     Boost::system 
     Boost::thread
-    ${OpenCV_LIBS}            # Добавляем OpenCV
-    nlohmann_json::nlohmann_json  # Добавляем nlohmann-json
+    ${OpenCV_LIBS}
+    nlohmann_json::nlohmann_json
 )
 
 # Для Windows дополнительно линкуем с системными библиотеками
@@ -76,3 +83,31 @@ add_custom_command(TARGET server POST_BUILD
         "${CMAKE_CURRENT_BINARY_DIR}/web"
     COMMENT "Copying web resources"
 )
+
+# Включение тестов
+option(BUILD_TESTS "Build tests" ON)
+
+if(BUILD_TESTS)
+    # Поиск GoogleTest
+    find_package(GTest REQUIRED)
+    
+    # Создание тестовой цели
+    add_executable(tests ${TEST_SOURCES})
+
+    target_include_directories(tests PRIVATE 
+        include
+        ${OpenCV_INCLUDE_DIRS}
+        ${Boost_INCLUDE_DIRS}
+    )
+    
+    target_link_libraries(tests PRIVATE
+        Boost::system
+        GTest::gtest_main
+        ${OpenCV_LIBS}
+        nlohmann_json::nlohmann_json
+    )
+    
+    # Добавление в CTest
+    include(GoogleTest)
+    gtest_discover_tests(tests)
+endif()

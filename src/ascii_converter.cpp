@@ -18,6 +18,11 @@ cv::Mat AsciiConverter::convert_to_grayscale(const cv::Mat& frame)
     return gray;
 }
 
+void AsciiConverter::set_ascii_chars(const std::string& chars) 
+{
+    ascii_chars_ = chars;
+}
+
 std::string AsciiConverter::convert(const cv::Mat& frame, int output_width, int output_height) 
 {
     if (frame.empty()) return "";

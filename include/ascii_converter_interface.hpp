@@ -8,4 +8,5 @@ class IAsciiConverter
 public:
     virtual ~IAsciiConverter() = default;
     virtual std::string convert(const cv::Mat& frame, int output_width, int output_height) = 0;
+    virtual void set_ascii_chars(const std::string& chars) = 0;
 };

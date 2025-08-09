@@ -32,6 +32,19 @@
 3.  Соберите проект:
     cmake --build . --config Release
 
-## Запуск
+После успешной сборки исполняемый файл server.exe будет находиться в директории build/Release.
 
-После успешной сборки исполняемый файл (server.exe) будет находиться в директории build.
+## Сборка тестов
+
+1. Создайте директорию для сборки:
+    mkdir build_tests
+    cd build_tests 
+
+2. Запустите CMake с параметром -DBUILD_TESTS=ON для генерации файлов сборки:
+    Если вы используете Visual Studio, вы можете указать генератор
+    cmake -DBUILD_TESTS=ON .. -G "Visual Studio 17 2022"
+
+3.  Соберите проект:
+    cmake --build . --config Release
+
+После успешной сборки исполняемый файл с тестами tests.exe будет находиться в директории build_tests/Release.

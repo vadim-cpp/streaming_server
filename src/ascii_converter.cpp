@@ -26,16 +26,37 @@ std::string AsciiConverter::convert(const cv::Mat& frame, int output_width, int 
     cv::Mat processed = convert_to_grayscale(frame);
     processed = resize_frame(processed, output_width, output_height);
     
-    // Генерация ASCII
-    std::string ascii_frame;
-    for (int y = 0; y < processed.rows; y++) 
+    // Создаем lookup table (LUT)
+    const size_t num_chars = ascii_chars_.size();
+    const double char_step = 255.0 / (num_chars - 1);
+    std::array<char, 256> lut;
+    for (int i = 0; i < 256; ++i) 
     {
-        for (int x = 0; x < processed.cols; x++) {
-            uchar pixel = processed.at<uchar>(y, x);
-            int index = pixel * (ascii_chars_.size() - 1) / 255;
-            ascii_frame += ascii_chars_[index];
+        int index = static_cast<int>(i / char_step + 0.5);  // Округление
+        lut[i] = ascii_chars_[std::clamp(index, 0, static_cast<int>(num_chars - 1))];
+    }
+
+    // Рассчитываем необходимый размер буфера
+    const size_t rows = processed.rows;
+    const size_t cols = processed.cols;
+    const size_t buffer_size = rows * (cols + 1);  // +1 для '\n' в каждой строке
+    
+    // Резервируем память (+1 для null-terminator)
+    std::string ascii_frame;
+    ascii_frame.reserve(buffer_size + 1);
+    
+    // Быстрая конвертация с использованием указателей
+    for (int y = 0; y < rows; ++y) 
+    {
+        const uchar* row_ptr = processed.ptr<uchar>(y);
+        
+        for (int x = 0; x < cols; ++x) 
+        {
+            ascii_frame += lut[row_ptr[x]];
         }
+        
         ascii_frame += '\n';
     }
+    
     return ascii_frame;
 }

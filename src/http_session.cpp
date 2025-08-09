@@ -1,6 +1,8 @@
 #include "http_session.hpp"
 #include "websocket_session.hpp"
 #include <boost/beast/websocket.hpp>
+#include "video_source.hpp"
+#include "ascii_converter.hpp"
 #include <fstream>
 #include <sstream>
 #include <string>
@@ -31,9 +33,15 @@ void http_session::do_read()
             
             if(beast::websocket::is_upgrade(self->request_)) 
             {
-                // Создаем tcp_stream напрямую без указания версии
+                auto video_source = std::make_unique<VideoSource>();
+                auto ascii_converter = std::make_unique<AsciiConverter>();
+                
                 auto stream = beast::tcp_stream(std::move(self->socket_));
-                auto ws_session = std::make_shared<websocket_session>(std::move(stream));
+                auto ws_session = std::make_shared<websocket_session>(
+                    std::move(stream),
+                    std::move(video_source),
+                    std::move(ascii_converter));
+                    
                 ws_session->run(self->request_);
                 return;
             }

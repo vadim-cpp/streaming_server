@@ -1,9 +1,8 @@
 #pragma once
 
 #include "server.hpp"
-#include "video_source.hpp"
-#include "ascii_converter.hpp"
-
+#include "video_source_interface.hpp"
+#include "ascii_converter_interface.hpp"
 #include <boost/beast/websocket.hpp>
 
 namespace net = boost::asio;
@@ -15,7 +14,11 @@ namespace websocket = beast::websocket;
 class websocket_session : public std::enable_shared_from_this<websocket_session> 
 {
 public:
-    explicit websocket_session(beast::tcp_stream stream);
+    explicit websocket_session(
+        beast::tcp_stream stream,
+        std::unique_ptr<IVideoSource> video_source,
+        std::unique_ptr<IAsciiConverter> ascii_converter);
+    
     ~websocket_session();
     void run(http::request<http::string_body> req);
 
@@ -34,8 +37,8 @@ private:
     websocket::stream<beast::tcp_stream> ws_;
     beast::flat_buffer buffer_;
 
-    std::unique_ptr<VideoSource> video_source_;
-    std::unique_ptr<AsciiConverter> ascii_converter_;
+    std::unique_ptr<IVideoSource> video_source_;
+    std::unique_ptr<IAsciiConverter> ascii_converter_;
     net::steady_timer frame_timer_;
     int frame_width_ = 120;
     int frame_height_ = 90;

@@ -1,9 +1,12 @@
 #include "websocket_session.hpp"
+#include "video_source.hpp"
+#include "ascii_converter.hpp"
 
 #include <iostream>
 #include <opencv2/opencv.hpp>
 #include <opencv2/imgproc.hpp>
 #include <nlohmann/json.hpp>
+
 
 namespace beast = boost::beast;
 namespace http = beast::http;
@@ -11,13 +14,15 @@ namespace websocket = beast::websocket;
 namespace net = boost::asio;
 using tcp = net::ip::tcp;
 
-websocket_session::websocket_session(beast::tcp_stream stream)
+websocket_session::websocket_session(
+    beast::tcp_stream stream,
+    std::unique_ptr<IVideoSource> video_source,
+    std::unique_ptr<IAsciiConverter> ascii_converter)
     : ws_(std::move(stream)),
+      video_source_(std::move(video_source)),
+      ascii_converter_(std::move(ascii_converter)),
       frame_timer_(ws_.get_executor()) 
-{
-    video_source_ = std::make_unique<VideoSource>();
-    ascii_converter_ = std::make_unique<AsciiConverter>();
-}
+{}
 
 websocket_session::~websocket_session() 
 {
@@ -169,9 +174,9 @@ void websocket_session::handle_config(const std::string& json)
             start_streaming();
         }
     } 
-    catch (...) 
+    catch (const nlohmann::json::exception& e) 
     {
-        // Обработка ошибок парсинга
+        ws_.async_write(net::buffer("JSON error: " + std::string(e.what())));
     }
 }
 

@@ -214,21 +214,29 @@ void websocket_session::send_next_frame()
 {
     if (!is_streaming_) return;
     
-    // Захватываем и конвертируем кадр
     cv::Mat frame = video_source_->capture_frame();
-    std::string ascii_frame = ascii_converter_->convert(frame, frame_width_, frame_height_);
+    if (frame.empty()) 
+    {
+        // Обработка ошибки
+        return;
+    }
     
-    // Отправляем клиенту
+    // Создаём shared_ptr для управления временем жизни
+    auto ascii_data = std::make_shared<std::string>(
+        ascii_converter_->convert(frame, frame_width_, frame_height_)
+    );
+    
     ws_.text(true);
     ws_.async_write(
-        net::buffer(ascii_frame),
-        [self = shared_from_this()](beast::error_code ec, size_t) {
-            if (ec) {
+        net::buffer(*ascii_data),
+        [self = shared_from_this(), ascii_data](beast::error_code ec, size_t) {
+            // ascii_data будет существовать до завершения лямбды
+            if (ec) 
+            {
                 self->is_streaming_ = false;
                 return;
             }
             
-            // Запускаем таймер для следующего кадра
             self->frame_timer_.expires_after(std::chrono::milliseconds(1000 / self->fps_));
             self->frame_timer_.async_wait(
                 [self](beast::error_code ec) {

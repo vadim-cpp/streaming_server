@@ -1,8 +1,10 @@
 #include "http_session.hpp"
 #include "websocket_session.hpp"
-#include <boost/beast/websocket.hpp>
 #include "video_source.hpp"
 #include "ascii_converter.hpp"
+#include "logger.hpp"
+
+#include <boost/beast/websocket.hpp>
 #include <fstream>
 #include <sstream>
 #include <string>
@@ -25,14 +27,21 @@ void http_session::run()
 
 void http_session::do_read() 
 {
+    auto logger = Logger::get();
+
     request_ = {};
     http::async_read(socket_, buffer_, request_,
-        [self = shared_from_this()](beast::error_code ec, size_t bytes) 
+        [self = shared_from_this(), logger](beast::error_code ec, size_t bytes) 
         {
-            if(ec) return;
+            if(ec) 
+            {
+                logger->warn("HTTP read error: {}", ec.message());
+                return;
+            }
             
             if(beast::websocket::is_upgrade(self->request_)) 
             {
+                logger->debug("WebSocket upgrade requested");
                 auto ascii_converter = std::make_unique<AsciiConverter>();
                 
                 auto stream = beast::tcp_stream(std::move(self->socket_));
@@ -65,19 +74,26 @@ std::string http_session::get_mime_type(const std::string& path) const
 
 void http_session::handle_request() 
 {
+    auto logger = Logger::get();
+    logger->debug("HTTP request: {}", request_.target());
+
     std::string path = doc_root_;
     path.append(request_.target().data(), request_.target().size());
     
     if (path.back() == '/') 
     {
+        logger->debug("Appending index.html to path");
         path += "index.html";
     }
     
     http::response<http::string_body> res;
+    logger->debug("Opening file: {}", path);
     std::ifstream file(path, std::ios::binary);
     
     if (file) 
     {
+        logger->info("Serving file: {}", path);
+
         std::ostringstream ss;
         ss << file.rdbuf();
         res.body() = ss.str();
@@ -86,11 +102,14 @@ void http_session::handle_request()
     } 
     else 
     {
+        logger->warn("File not found: {}", path);
+        
         res.result(http::status::not_found);
         res.set(http::field::content_type, "text/plain");
         res.body() = "File not found: " + path;
     }
     
+    logger->debug("Sending HTTP response");
     res.prepare_payload();
     http::write(socket_, res);
 }

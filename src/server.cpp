@@ -1,5 +1,7 @@
 #include "server.hpp"
 #include "http_session.hpp"
+#include "logger.hpp"
+
 #include <boost/asio/dispatch.hpp>
 #include <memory>
 
@@ -31,10 +33,17 @@ void server::do_accept()
     acceptor_.async_accept(
         net::make_strand(ioc_),
         [self = shared_from_this()](boost::system::error_code ec, tcp::socket socket) {
+            auto logger = Logger::get();
             if(!ec) 
             {
+                logger->info("New connection from: {}", 
+                    socket.remote_endpoint().address().to_string());
                 std::make_shared<http_session>(
                     std::move(socket), self->doc_root_)->run();
+            }
+            else
+            {
+                logger->error("Accept error: {}", ec.message());
             }
             self->do_accept();
         });

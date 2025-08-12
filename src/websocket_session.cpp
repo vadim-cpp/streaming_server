@@ -1,6 +1,7 @@
 #include "websocket_session.hpp"
 #include "video_source.hpp"
 #include "ascii_converter.hpp"
+#include "logger.hpp"
 
 #include <iostream>
 #include <opencv2/opencv.hpp>
@@ -30,6 +31,8 @@ websocket_session::~websocket_session()
     {
         video_source_.reset();
     }
+    auto logger = Logger::get();
+    logger->debug("WebSocket session destroyed");
     frame_timer_.cancel();
 }
 
@@ -56,11 +59,13 @@ void websocket_session::run(http::request<http::string_body> req)
 
 void websocket_session::on_accept(beast::error_code ec) 
 {
+    auto logger = Logger::get();
     if(ec) 
     {
-        std::cerr << "Accept error: " << ec.message() << "\n";
+        logger->error("WebSocket accept error: {}", ec.message());
         return;
     }
+    logger->info("WebSocket connection established");
     do_read();
 }
 
@@ -75,18 +80,22 @@ void websocket_session::do_read()
 
 void websocket_session::on_read(beast::error_code ec, size_t) 
 {
-    if(ec == websocket::error::closed) 
+    auto logger = Logger::get();
+
+    if (ec == websocket::error::closed) 
     {
+        logger->info("WebSocket closed gracefully");
         return on_close(ec);
     }
     
-    if(ec) 
+    if (ec) 
     {
-        std::cerr << "Read error: " << ec.message() << "\n";
+        logger->error("WebSocket read error: {}", ec.message());
         return;
     }
 
     auto message = beast::buffers_to_string(buffer_.data());
+    logger->debug("Received message: {}", message);
     
     // Обработка конфигурации
     if (message.find("\"type\":\"config\"") != std::string::npos) 
@@ -114,10 +123,10 @@ void websocket_session::on_read(beast::error_code ec, size_t)
     ws_.text(ws_.got_text());
     ws_.async_write(
         buffer_.data(),
-        [self = shared_from_this()](beast::error_code ec, size_t) {
+        [self = shared_from_this(), logger](beast::error_code ec, size_t) {
             if(ec) 
             {
-                std::cerr << "Write error: " << ec.message() << "\n";
+                logger->error("Write error: {}", ec.message());
                 return;
             }
             
@@ -130,6 +139,8 @@ void websocket_session::release_camera()
 {
     if (video_source_) 
     {
+        auto logger = Logger::get();
+        logger->info("Releasing camera resources");
         video_source_->close();
         video_source_.reset();
     }
@@ -137,25 +148,32 @@ void websocket_session::release_camera()
 
 void websocket_session::on_close(beast::error_code ec) 
 {
+    auto logger = Logger::get();
+    logger->info("Closing WebSocket connection");
     is_streaming_ = false;
     frame_timer_.cancel();
     release_camera();
     
     if(ec && ec != beast::errc::not_connected) 
     {
-        std::cerr << "Close error: " << ec.message() << "\n";
+        logger->error("Close error: {}", ec.message());
     }
 }
 
 void websocket_session::handle_config(const std::string& json) 
 {
+    auto logger = Logger::get();
     try 
     {
         // Парсим JSON: {"type":"config","resolution":"120x90","fps":10}
+        logger->debug("Handling config: {}", json);
         auto j = nlohmann::json::parse(json);
         
         if (j["type"] == "config") 
         {
+            logger->info("New stream config: {} FPS, resolution: {}x{}", 
+                        fps_, frame_width_, frame_height_);
+
             // Парсим разрешение "120x90"
             std::string res = j["resolution"];
             size_t pos = res.find('x');
@@ -171,6 +189,8 @@ void websocket_session::handle_config(const std::string& json)
             
             if (video_source_) 
             {
+                auto logger = Logger::get();
+                logger->info("Releasing previous camera for reconfiguration");
                 release_camera();
             }
 
@@ -178,7 +198,7 @@ void websocket_session::handle_config(const std::string& json)
             {
                 video_source_ = std::make_unique<VideoSource>();
             }
-            
+
             video_source_->set_resolution(frame_width_ * 2, frame_height_ * 2);
             
             start_streaming();
@@ -186,13 +206,19 @@ void websocket_session::handle_config(const std::string& json)
     } 
     catch (const nlohmann::json::exception& e) 
     {
+        logger->error("JSON parse error: {}", e.what());
         ws_.async_write(net::buffer("JSON error: " + std::string(e.what())));
     }
 }
 
 void websocket_session::start_streaming() 
 {
-    if (is_streaming_) return;
+    auto logger = Logger::get();
+    if (is_streaming_) 
+    {
+        logger->debug("Streaming already started");
+        return;
+    }
     
     if (!video_source_) 
     {
@@ -216,6 +242,7 @@ void websocket_session::start_streaming()
         return;
     }
     
+    logger->info("Starting video streaming");
     is_streaming_ = true;
     send_next_frame();
 }
@@ -227,7 +254,8 @@ void websocket_session::send_next_frame()
     cv::Mat frame = video_source_->capture_frame();
     if (frame.empty()) 
     {
-        // Обработка ошибки
+        auto logger = Logger::get();
+        logger->warn("Empty frame captured, skipping");
         return;
     }
     

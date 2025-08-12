@@ -1,4 +1,5 @@
 #include "ascii_converter.hpp"
+#include "logger.hpp"
 
 #include <opencv2/opencv.hpp>
 
@@ -25,7 +26,21 @@ void AsciiConverter::set_ascii_chars(const std::string& chars)
 
 std::string AsciiConverter::convert(const cv::Mat& frame, int output_width, int output_height) 
 {
-    if (frame.empty()) return "";
+    auto logger = Logger::get();
+
+    if (frame.empty()) 
+    {
+        logger->warn("Attempted to convert empty frame");
+        return "";
+    }
+
+    if (ascii_chars_.empty()) 
+    {
+        logger->error("ASCII characters not set");
+        return "CONFIG ERROR";
+    }
+
+    logger->debug("Converting frame to ASCII: {}x{}", output_width, output_height);
     
     // Обработка кадра
     cv::Mat processed = convert_to_grayscale(frame);

@@ -1,10 +1,17 @@
 #include "server.hpp"
+#include "logger.hpp"
+
 #include <iostream>
 
 int main() 
 {
+    Logger::init();
+    auto logger = Logger::get();
+
     try 
     {
+        logger->info("Starting ASCII streamer server");
+
         // Конфигурация сервера
         const std::string address = "0.0.0.0";
         const unsigned short port = 8080;
@@ -15,12 +22,12 @@ int main()
         auto server = make_server(ioc, tcp::endpoint(
             net::ip::make_address(address), port), doc_root);
         
-        std::cout << "Server listening on " << address << ":" << port << "\n";
+        logger->info("Server listening on {}:{}", address, port);
         ioc.run();
     } 
     catch (const std::exception& e) 
     {
-        std::cerr << "Error: " << e.what() << "\n";
+        logger->critical("Fatal error: {}", e.what());
         return 1;
     }
     

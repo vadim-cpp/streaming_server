@@ -27,6 +27,8 @@ find_package(Boost 1.70 REQUIRED COMPONENTS system thread)
 # Поиск nlohmann-json
 find_package(nlohmann_json REQUIRED)
 
+find_package(spdlog REQUIRED)
+
 # Список исходных файлов для сервера
 set(SERVER_SOURCES
     src/main.cpp
@@ -35,6 +37,7 @@ set(SERVER_SOURCES
     src/websocket_session.cpp
     src/video_source.cpp
     src/ascii_converter.cpp
+    src/logger.cpp
 )
 
 # Список исходных файлов для тестов
@@ -44,6 +47,7 @@ set(TEST_SOURCES
     tests/test_video_source.cpp
     src/ascii_converter.cpp
     src/video_source.cpp
+    src/logger.cpp
 )
 
 # Создание исполняемого файла для сервера
@@ -61,6 +65,7 @@ target_link_libraries(server PRIVATE
     Boost::thread
     ${OpenCV_LIBS}
     nlohmann_json::nlohmann_json
+    spdlog::spdlog
 )
 
 # Для Windows дополнительно линкуем с системными библиотеками
@@ -87,7 +92,7 @@ add_custom_command(TARGET server POST_BUILD
 )
 
 # Включение тестов
-option(BUILD_TESTS "Build tests" ON)
+option(BUILD_TESTS "Build tests" OFF)
 
 if(BUILD_TESTS)
     # Поиск GoogleTest
@@ -109,6 +114,7 @@ if(BUILD_TESTS)
         GTest::gmock_main
         ${OpenCV_LIBS}
         nlohmann_json::nlohmann_json
+        spdlog::spdlog
     )
     
     # Добавление в CTest

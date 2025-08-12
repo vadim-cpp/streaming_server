@@ -154,7 +154,8 @@ void websocket_session::handle_config(const std::string& json)
         // Парсим JSON: {"type":"config","resolution":"120x90","fps":10}
         auto j = nlohmann::json::parse(json);
         
-        if (j["type"] == "config") {
+        if (j["type"] == "config") 
+        {
             // Парсим разрешение "120x90"
             std::string res = j["resolution"];
             size_t pos = res.find('x');
@@ -162,13 +163,22 @@ void websocket_session::handle_config(const std::string& json)
             frame_height_ = std::stoi(res.substr(pos + 1));
             
             // Устанавливаем FPS если есть
-            if (j.contains("fps")) {
+            if (j.contains("fps"))
+            {
+
                 fps_ = j["fps"];
             }
             
-            // Пересоздаем видео источник при новой конфигурации
-            release_camera();
-            video_source_ = std::make_unique<VideoSource>();
+            if (video_source_) 
+            {
+                release_camera();
+            }
+
+            if (!video_source_) 
+            {
+                video_source_ = std::make_unique<VideoSource>();
+            }
+            
             video_source_->set_resolution(frame_width_ * 2, frame_height_ * 2);
             
             start_streaming();

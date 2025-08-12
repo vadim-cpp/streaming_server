@@ -33,13 +33,12 @@ void http_session::do_read()
             
             if(beast::websocket::is_upgrade(self->request_)) 
             {
-                auto video_source = std::make_unique<VideoSource>();
                 auto ascii_converter = std::make_unique<AsciiConverter>();
                 
                 auto stream = beast::tcp_stream(std::move(self->socket_));
                 auto ws_session = std::make_shared<websocket_session>(
                     std::move(stream),
-                    std::move(video_source),
+                    nullptr,
                     std::move(ascii_converter));
                     
                 ws_session->run(self->request_);

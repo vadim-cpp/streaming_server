@@ -15,12 +15,18 @@
 - [vcpkg](https://github.com/microsoft/vcpkg) для управления зависимостями
 
 Установите необходимые библиотеки через vcpkg:
-    ./vcpkg install opencv
-    ./vcpkg install boost
-    ./vcpkg install nlohmann-json
-    ./vcpkg install gtest
+- ./vcpkg install opencv
+- ./vcpkg install boost
+- ./vcpkg install nlohmann-json
+- ./vcpkg install gtest
 
-## Сборка проекта
+## Сборка проекта через build.but
+
+Откройте cmd и запустите build.but. Можно Указать параметры:
+- tests--ON (для включения тестов)
+- config--Debug (для сборки в режиме Debug)
+
+## Сборка проекта вручную
 
 1. Создайте директорию для сборки:
     mkdir build

@@ -20,9 +20,9 @@
 - ./vcpkg install nlohmann-json
 - ./vcpkg install gtest
 
-## Сборка проекта через build.but
+## Сборка проекта через build.bat
 
-Откройте cmd и запустите build.but. Можно Указать параметры:
+Откройте cmd и запустите build.bat. Можно Указать параметры:
 - tests--ON (для включения тестов)
 - config--Debug (для сборки в режиме Debug)
 

@@ -9,7 +9,6 @@ set "CONFIGURATION=Release"
 
 :: Проверка аргументов командной строки для изменения значения флага
 for %%A in (%*) do (
-    echo A = %%A
     if "%%~A"=="tests--OFF" (
         set "BUILD_TESTS=OFF"
     ) else if "%%~A"=="tests--ON" (

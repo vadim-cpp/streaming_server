@@ -1,14 +1,17 @@
 #pragma once
 
 #include "server.hpp"
+
 #include <memory>
 
-class websocket_session; // Предварительное объявление
+class websocket_session;
 
 class http_session : public std::enable_shared_from_this<http_session> 
 {
 public:
-    http_session(tcp::socket socket, std::string doc_root);
+    http_session(tcp::socket socket, 
+                 std::shared_ptr<server> srv, 
+                 std::string doc_root);
     void run();
 
 private:
@@ -20,4 +23,5 @@ private:
     beast::flat_buffer buffer_;
     http::request<http::string_body> request_;
     std::string doc_root_;
+    std::shared_ptr<server> server_;
 };

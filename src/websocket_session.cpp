@@ -118,6 +118,37 @@ void websocket_session::on_read(beast::error_code ec, size_t)
             });
         return;
     }
+
+     if (message.find("\"type\":\"auth\"") != std::string::npos) 
+     {
+        try 
+        {
+            auto j = nlohmann::json::parse(message);
+            std::string received_key = j["api_key"];
+            
+            if (true) 
+            {
+                logger->info("Authentication successful");
+                ws_.async_write(net::buffer("AUTH_SUCCESS"));
+                
+                // Запускаем стрим после аутентификации
+                if (!is_streaming_) {
+                    start_streaming();
+                }
+            } 
+            else 
+            {
+                logger->warn("Invalid API key received");
+                ws_.async_write(net::buffer("AUTH_FAILURE"));
+                return on_close(beast::error_code{});
+            }
+        } 
+        catch (...) 
+        {
+            logger->error("Invalid auth message format");
+        }
+        return;
+    }
     
     // Эхо-ответ
     ws_.text(ws_.got_text());

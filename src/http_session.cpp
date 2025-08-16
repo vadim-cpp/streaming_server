@@ -15,8 +15,15 @@ namespace http = beast::http;
 namespace net = boost::asio;
 using tcp = net::ip::tcp;
 
-http_session::http_session(tcp::socket socket, std::string doc_root)
-    : socket_(std::move(socket)), doc_root_(std::move(doc_root)) {}
+http_session::http_session(
+    tcp::socket socket, 
+    std::shared_ptr<server> srv,
+    std::string doc_root)
+    : socket_(std::move(socket))
+    , server_(srv)
+    , doc_root_(std::move(doc_root))
+{
+}
 
 void http_session::run() 
 {
@@ -100,6 +107,35 @@ void http_session::handle_request()
         res.set(http::field::content_type, "application/json");
         res.body() = j.dump();
         
+        res.prepare_payload();
+        http::write(socket_, res);
+        return;
+    }
+
+    if (request_.target() == "/api") 
+    {
+        auto logger = Logger::get();
+        logger->debug("Handling /api request");
+        
+        http::response<http::string_body> res;
+        res.result(http::status::ok);
+        res.set(http::field::content_type, "application/json");
+        res.set(http::field::access_control_allow_origin, "*");
+        
+        nlohmann::json j;
+        j["api_key"] = server_->api_key();
+        
+        // Получаем адрес и порт из локального endpoint сервера
+        auto endpoint = server_->acceptor().local_endpoint();
+        std::string address = endpoint.address().to_string();
+        unsigned short port = endpoint.port();
+        
+        // Для адреса 0.0.0.0 используем localhost
+        if (address == "0.0.0.0") address = "localhost";
+        
+        j["endpoint"] = "ws://" + address + ":" + std::to_string(port) + "/stream";
+        
+        res.body() = j.dump();
         res.prepare_payload();
         http::write(socket_, res);
         return;

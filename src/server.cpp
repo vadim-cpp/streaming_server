@@ -1,6 +1,7 @@
 #include "server.hpp"
 #include "http_session.hpp"
 #include "logger.hpp"
+#include "api_key_manager.hpp"
 
 #include <boost/asio/dispatch.hpp>
 #include <memory>
@@ -21,6 +22,13 @@ server::server(net::io_context& ioc, tcp::endpoint endpoint, std::string doc_roo
     
     acceptor_.listen(net::socket_base::max_listen_connections, ec);
     if(ec) throw boost::system::system_error(ec);
+
+    api_key_ = APIKeyManager::generate_key();
+
+    api_key_ = APIKeyManager::generate_key();
+    auto logger = Logger::get();
+    logger->info("Server API key: {}", api_key_);
+
 }
 
 void server::run() 
@@ -39,7 +47,9 @@ void server::do_accept()
                 logger->info("New connection from: {}", 
                     socket.remote_endpoint().address().to_string());
                 std::make_shared<http_session>(
-                    std::move(socket), self->doc_root_)->run();
+                    std::move(socket), 
+                    self,
+                    self->doc_root_)->run();
             }
             else
             {

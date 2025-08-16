@@ -12,10 +12,18 @@ public:
     bool is_available() const override;
     cv::Mat capture_frame() override;
     void set_resolution(int width, int height) override;
+    void open(int index) override;
     void close() override;
+
+    struct CameraInfo {
+        int index;
+        std::string name;
+    };
+    static std::vector<CameraInfo> list_cameras();
     
 private:
     cv::VideoCapture cap_;
     int width_ = 640;
     int height_ = 480;
+    int camera_index_ = 0;
 };

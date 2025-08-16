@@ -5,10 +5,38 @@ class AsciiStreamer
         this.output = document.getElementById('asciiOutput');
         this.ws = null;
         this.isStreaming = false;
+
+        this.cameraSelect = document.getElementById('camera');
+        this.loadCameras();
         
         document.getElementById('startBtn').addEventListener('click', () => {
             if(this.isStreaming) this.stop();
             else this.start();
+        });
+    }
+
+    async loadCameras() 
+    {
+        try 
+        {
+            const response = await fetch('/cameras');
+            const cameras = await response.json();
+            this.populateCameraSelect(cameras);
+        } 
+        catch (error) 
+        {
+            console.error('Failed to load cameras:', error);
+        }
+    }
+
+    populateCameraSelect(cameras) 
+    {
+        this.cameraSelect.innerHTML = '';
+        cameras.forEach(camera => {
+            const option = document.createElement('option');
+            option.value = camera.index;
+            option.textContent = camera.name;
+            this.cameraSelect.appendChild(option);
         });
     }
 
@@ -27,10 +55,13 @@ class AsciiStreamer
         const fps = 10; 
         
         this.ws = new WebSocket(`ws://${window.location.host}/stream`);
+
+        const cameraIndex = document.getElementById('camera').value;
         
         this.ws.onopen = () => {
             this.ws.send(JSON.stringify({ 
                 type: 'config',
+                camera_index: parseInt(cameraIndex),
                 resolution: resolution,
                 fps: fps
             }));

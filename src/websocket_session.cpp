@@ -179,6 +179,9 @@ void websocket_session::handle_config(const std::string& json)
             size_t pos = res.find('x');
             frame_width_ = std::stoi(res.substr(0, pos));
             frame_height_ = std::stoi(res.substr(pos + 1));
+
+            // Извлекаем индекс камеры
+            int camera_index = j.value("camera_index", 0);
             
             // Устанавливаем FPS если есть
             if (j.contains("fps"))
@@ -198,7 +201,8 @@ void websocket_session::handle_config(const std::string& json)
             {
                 video_source_ = std::make_unique<VideoSource>();
             }
-
+            
+            video_source_->open(camera_index);
             video_source_->set_resolution(frame_width_ * 2, frame_height_ * 2);
             
             start_streaming();

@@ -5,6 +5,7 @@
 #include "logger.hpp"
 
 #include <boost/beast/websocket.hpp>
+#include <nlohmann/json.hpp>
 #include <fstream>
 #include <sstream>
 #include <string>
@@ -79,6 +80,30 @@ void http_session::handle_request()
 
     std::string path = doc_root_;
     path.append(request_.target().data(), request_.target().size());
+
+    if (request_.target() == "/cameras") 
+    {
+        logger->debug("Handling /cameras request");
+        auto cameras = VideoSource::list_cameras();
+        
+        nlohmann::json j;
+        for (const auto& camera : cameras) 
+        {
+            j.push_back({
+                {"index", camera.index},
+                {"name", camera.name}
+            });
+        }
+        
+        http::response<http::string_body> res;
+        res.result(http::status::ok);
+        res.set(http::field::content_type, "application/json");
+        res.body() = j.dump();
+        
+        res.prepare_payload();
+        http::write(socket_, res);
+        return;
+    }
     
     if (path.back() == '/') 
     {

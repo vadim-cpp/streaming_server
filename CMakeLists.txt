@@ -3,13 +3,14 @@ set(CMAKE_TOOLCHAIN_FILE "C:/vcpkg/scripts/buildsystems/vcpkg.cmake" CACHE STRIN
 project(ascii_streamer)
 
 # Установка стандарта C++
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 # Настройка для Windows
 if(WIN32)
     add_compile_definitions(_WIN32_WINNT=0x0601)
+    add_compile_options(/bigobj)
 endif()
 
 # Поиск OpenCV

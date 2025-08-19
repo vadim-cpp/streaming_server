@@ -3,7 +3,11 @@
 #include "server.hpp"
 #include "video_source_interface.hpp"
 #include "ascii_converter_interface.hpp"
+#include <boost/asio/awaitable.hpp>
+#include <boost/asio/use_awaitable.hpp>
+#include <boost/asio/co_spawn.hpp>
 #include <boost/beast/websocket.hpp>
+#include <nlohmann/json.hpp>
 
 namespace net = boost::asio;
 namespace beast = boost::beast;
@@ -23,14 +27,12 @@ public:
     void run(http::request<http::string_body> req);
 
 private:
-    void on_accept(beast::error_code ec);
-    void do_read();
-    void on_read(beast::error_code ec, size_t bytes);
-    void on_close(beast::error_code ec);
-
-    void handle_config(const std::string& json);
-    void start_streaming();
-    void send_next_frame();
+    net::awaitable<void> do_run(http::request<http::string_body> req);
+    net::awaitable<void> do_read();
+    net::awaitable<void> handle_message(const std::string& message);
+    net::awaitable<void> handle_config(const nlohmann::json& j);
+    net::awaitable<void> start_streaming();
+    net::awaitable<void> send_frames();
 
     void release_camera();
 

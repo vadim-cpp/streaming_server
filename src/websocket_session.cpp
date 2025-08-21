@@ -67,15 +67,40 @@ net::awaitable<void> websocket_session::do_run(http::request<http::string_body> 
         
         while (ws_.is_open()) 
         {
-            co_await do_read();
+            try 
+            {
+                co_await do_read();
+            } 
+            catch (const beast::system_error& e) 
+            {
+                if (e.code() == websocket::error::closed) 
+                {
+                    logger->info("WebSocket connection closed gracefully");
+                    break;
+                }
+                logger->error("WebSocket error: {}", e.what());
+                break;
+            } 
+            catch (const std::exception& e) 
+            {
+                logger->error("Error in do_run: {}", e.what());
+                break;
+            }
         }
     } 
     catch (const std::exception& e) 
     {
-        logger->error("WebSocket error: {}", e.what());
+        if (strstr(e.what(), "closed") == nullptr &&
+            strstr(e.what(), "The WebSocket stream was gracefully closed") == nullptr) 
+        {
+            logger->error("WebSocket error: {}", e.what());
+        } 
+        else 
+        {
+            logger->info("WebSocket connection closed");
+        }
     }
     
-    logger->info("WebSocket connection closed");
     release_camera();
 }
 
@@ -116,8 +141,7 @@ net::awaitable<void> websocket_session::handle_message(const std::string& messag
         {
             co_await handle_config(j);
         } 
-        else 
-        if (type == "stop") 
+        else if (type == "stop") 
         {
             is_streaming_ = false;
             frame_timer_.cancel();
@@ -143,7 +167,6 @@ net::awaitable<void> websocket_session::handle_message(const std::string& messag
     {
         logger->error("Message handling error: {}", e.what());
         std::string error_msg = "ERROR: " + std::string(e.what());
-        //co_await ws_.async_write(net::buffer(error_msg), net::use_awaitable);
     }
 }
 

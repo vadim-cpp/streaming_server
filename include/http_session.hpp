@@ -1,23 +1,32 @@
 #pragma once
 
-#include "server.hpp"
+#include <boost/beast.hpp>
+#include <boost/asio.hpp>
 #include <memory>
+#include <string>
 
-class websocket_session; // Предварительное объявление
+namespace beast = boost::beast;
+namespace http = beast::http;
+namespace net = boost::asio;
+using tcp = net::ip::tcp;
 
-class http_session : public std::enable_shared_from_this<http_session> 
+class Server;
+
+class HttpSession : public std::enable_shared_from_this<HttpSession> 
 {
 public:
-    http_session(tcp::socket socket, std::string doc_root);
+    HttpSession(tcp::socket socket, std::shared_ptr<Server> srv, std::string doc_root);
+    
     void run();
-
+    
 private:
     void do_read();
     void handle_request();
     std::string get_mime_type(const std::string& path) const;
-
-    beast::tcp_stream socket_;
+    
+    beast::tcp_stream stream_;
+    std::shared_ptr<Server> server_;
+    std::string doc_root_;
     beast::flat_buffer buffer_;
     http::request<http::string_body> request_;
-    std::string doc_root_;
 };

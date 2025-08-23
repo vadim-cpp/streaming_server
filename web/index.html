@@ -17,11 +17,17 @@
                 <option value="160x120">160x120</option>
             </select>
             <label for="camera">Camera:</label>
-                <select id="camera">
-                    <option value="0">Default Camera</option>
-                </select>
+            <select id="camera">
+                <option value="0">Default Camera</option>
+            </select>
         </div>
         <pre id="asciiOutput"></pre>
+        
+        <div class="api-panel">
+            <button id="showApiBtn">Show API Info</button>
+            <div id="apiInfo" class="api-info"></div>
+            <button id="copyApiBtn" style="display:none; margin-top:10px;">Copy API</button>
+        </div>
     </div>
     <script src="app.js"></script>
 </body>

@@ -1,39 +1,31 @@
 #include "http_session.hpp"
 #include "websocket_session.hpp"
+#include "server.hpp"
 #include "video_source.hpp"
-#include "ascii_converter.hpp"
 #include "logger.hpp"
 
-#include <boost/beast/websocket.hpp>
 #include <nlohmann/json.hpp>
 #include <fstream>
 #include <sstream>
-#include <string>
 
-namespace beast = boost::beast;
-namespace http = beast::http;
-namespace net = boost::asio;
-using tcp = net::ip::tcp;
+HttpSession::HttpSession(tcp::socket socket, std::shared_ptr<Server> srv, std::string doc_root)
+    : stream_(std::move(socket)), server_(srv), doc_root_(std::move(doc_root)) {}
 
-http_session::http_session(tcp::socket socket, std::string doc_root)
-    : socket_(std::move(socket)), doc_root_(std::move(doc_root)) {}
-
-void http_session::run() 
+void HttpSession::run() 
 {
-    net::dispatch(socket_.get_executor(),
+    net::dispatch(stream_.get_executor(),
         [self = shared_from_this()] {
             self->do_read();
         });
 }
 
-void http_session::do_read() 
+void HttpSession::do_read() 
 {
     auto logger = Logger::get();
 
     request_ = {};
-    http::async_read(socket_, buffer_, request_,
-        [self = shared_from_this(), logger](beast::error_code ec, size_t bytes) 
-        {
+    http::async_read(stream_, buffer_, request_,
+        [self = shared_from_this(), logger](beast::error_code ec, size_t bytes) {
             if(ec) 
             {
                 logger->warn("HTTP read error: {}", ec.message());
@@ -43,13 +35,11 @@ void http_session::do_read()
             if(beast::websocket::is_upgrade(self->request_)) 
             {
                 logger->debug("WebSocket upgrade requested");
-                auto ascii_converter = std::make_unique<AsciiConverter>();
                 
-                auto stream = beast::tcp_stream(std::move(self->socket_));
-                auto ws_session = std::make_shared<websocket_session>(
-                    std::move(stream),
-                    nullptr,
-                    std::move(ascii_converter));
+                auto ws_session = std::make_shared<WebSocketSession>(
+                    std::move(self->stream_),
+                    self->server_->stream_controller(),
+                    self->server_);
                     
                 ws_session->run(self->request_);
                 return;
@@ -59,7 +49,7 @@ void http_session::do_read()
         });
 }
 
-std::string http_session::get_mime_type(const std::string& path) const 
+std::string HttpSession::get_mime_type(const std::string& path) const 
 {
     if (path.size() > 5 && path.compare(path.size() - 5, 5, ".html") == 0)
         return "text/html";
@@ -73,7 +63,7 @@ std::string http_session::get_mime_type(const std::string& path) const
     return "application/octet-stream";
 }
 
-void http_session::handle_request() 
+void HttpSession::handle_request() 
 {
     auto logger = Logger::get();
     logger->debug("HTTP request: {}", request_.target());
@@ -101,7 +91,34 @@ void http_session::handle_request()
         res.body() = j.dump();
         
         res.prepare_payload();
-        http::write(socket_, res);
+        http::write(stream_, res);
+        return;
+    }
+
+    if (request_.target() == "/api") 
+    {
+        auto logger = Logger::get();
+        logger->debug("Handling /api request");
+        
+        http::response<http::string_body> res;
+        res.result(http::status::ok);
+        res.set(http::field::content_type, "application/json");
+        res.set(http::field::access_control_allow_origin, "*");
+        
+        nlohmann::json j;
+        j["api_key"] = server_->api_key();
+        
+        auto endpoint = server_->acceptor().local_endpoint();
+        std::string address = endpoint.address().to_string();
+        unsigned short port = endpoint.port();
+        
+        if (address == "0.0.0.0") address = "localhost";
+        
+        j["endpoint"] = "ws://" + address + ":" + std::to_string(port) + "/stream";
+        
+        res.body() = j.dump();
+        res.prepare_payload();
+        http::write(stream_, res);
         return;
     }
     
@@ -136,5 +153,5 @@ void http_session::handle_request()
     
     logger->debug("Sending HTTP response");
     res.prepare_payload();
-    http::write(socket_, res);
+    http::write(stream_, res);
 }

@@ -1,47 +1,41 @@
 #pragma once
 
-#include "server.hpp"
-#include "video_source_interface.hpp"
-#include "ascii_converter_interface.hpp"
-#include <boost/beast/websocket.hpp>
+#include "stream_controller.hpp"
 
-namespace net = boost::asio;
+#include <memory>
+#include <deque>
+#include <boost/beast.hpp>
+#include <boost/asio.hpp>
+
 namespace beast = boost::beast;
 namespace http = beast::http;
-using tcp = net::ip::tcp;
 namespace websocket = beast::websocket;
+namespace net = boost::asio;
 
-class websocket_session : public std::enable_shared_from_this<websocket_session> 
+class Server;
+
+class WebSocketSession : public std::enable_shared_from_this<WebSocketSession> 
 {
 public:
-    explicit websocket_session(
-        beast::tcp_stream stream,
-        std::unique_ptr<IVideoSource> video_source,
-        std::unique_ptr<IAsciiConverter> ascii_converter);
+    WebSocketSession(beast::tcp_stream stream, std::shared_ptr<StreamController> controller, std::shared_ptr<Server> server);
+    ~WebSocketSession();
     
-    ~websocket_session();
     void run(http::request<http::string_body> req);
+    void send_frame(const std::string& frame);
+    void close();
 
 private:
-    void on_accept(beast::error_code ec);
-    void do_read();
-    void on_read(beast::error_code ec, size_t bytes);
-    void on_close(beast::error_code ec);
-
-    void handle_config(const std::string& json);
-    void start_streaming();
-    void send_next_frame();
-
-    void release_camera();
-
+    net::awaitable<void> do_run(http::request<http::string_body> req);
+    net::awaitable<void> do_read();
+    net::awaitable<void> handle_message(const std::string& message);
+    net::awaitable<void> do_write();
+    
     websocket::stream<beast::tcp_stream> ws_;
+    std::shared_ptr<StreamController> controller_;
+    std::shared_ptr<Server> server_;
     beast::flat_buffer buffer_;
-
-    std::unique_ptr<IVideoSource> video_source_;
-    std::unique_ptr<IAsciiConverter> ascii_converter_;
-    net::steady_timer frame_timer_;
-    int frame_width_ = 120;
-    int frame_height_ = 90;
-    int fps_ = 10;
-    bool is_streaming_ = false;
+    std::deque<std::string> write_queue_;
+    bool is_writing_ = false;
+    bool is_authenticated_ = false;
+    bool is_controller_ = false;
 };

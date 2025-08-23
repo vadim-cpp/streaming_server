@@ -3,6 +3,7 @@
 #include "stream_controller.hpp"
 
 #include <memory>
+#include <deque>
 #include <boost/beast.hpp>
 #include <boost/asio.hpp>
 
@@ -27,11 +28,14 @@ private:
     net::awaitable<void> do_run(http::request<http::string_body> req);
     net::awaitable<void> do_read();
     net::awaitable<void> handle_message(const std::string& message);
+    net::awaitable<void> do_write();
     
     websocket::stream<beast::tcp_stream> ws_;
     std::shared_ptr<StreamController> controller_;
     std::shared_ptr<Server> server_;
     beast::flat_buffer buffer_;
+    std::deque<std::string> write_queue_;
+    bool is_writing_ = false;
     bool is_authenticated_ = false;
     bool is_controller_ = false;
 };

@@ -4,8 +4,13 @@
 
 #include <nlohmann/json.hpp>
 
-WebSocketSession::WebSocketSession(beast::tcp_stream stream, std::shared_ptr<StreamController> controller, std::shared_ptr<Server> server)
-    : ws_(std::move(stream)), controller_(controller), server_(server) {}
+WebSocketSession::WebSocketSession(beast::tcp_stream stream, 
+                                   std::shared_ptr<StreamController> controller, 
+                                   std::shared_ptr<Server> server)
+    : ws_(std::move(stream)), 
+      controller_(controller), 
+      server_(server) 
+{}
 
 WebSocketSession::~WebSocketSession() 
 {
@@ -46,15 +51,15 @@ void WebSocketSession::send_frame(const std::string& frame)
     
     net::post(ws_.get_executor(),
         [self = shared_from_this(), frame_ptr] {
-            if (self->ws_.is_open()) 
-            {
-                self->ws_.async_write(net::buffer(*frame_ptr),
-                    [self, frame_ptr](beast::error_code ec, size_t) {
-                        if (ec) 
-                        {
-                            self->close();
-                        }
-                    });
+            if (!self->ws_.is_open()) return;
+            
+            self->write_queue_.push_back(*frame_ptr);
+            
+            if (!self->is_writing_) {
+                self->is_writing_ = true;
+                net::co_spawn(self->ws_.get_executor(),
+                    [self] { return self->do_write(); },
+                    net::detached);
             }
         });
 }
@@ -72,6 +77,25 @@ void WebSocketSession::close()
                 }
             });
     }
+}
+
+net::awaitable<void> WebSocketSession::do_write()
+{
+    auto logger = Logger::get();
+    try {
+        while (!write_queue_.empty() && ws_.is_open())
+        {
+            std::string frame = std::move(write_queue_.front());
+            write_queue_.pop_front();
+
+            co_await ws_.async_write(net::buffer(frame), net::use_awaitable);
+        }
+    }
+    catch (const std::exception& e) {
+        logger->error("Write error: {}", e.what());
+        close();
+    }
+    is_writing_ = false;
 }
 
 net::awaitable<void> WebSocketSession::do_run(http::request<http::string_body> req) 
@@ -174,7 +198,7 @@ net::awaitable<void> WebSocketSession::handle_message(const std::string& message
             
             if (api_key != server_->api_key()) 
             {
-                co_await ws_.async_write(net::buffer("AUTH_FAILED"), net::use_awaitable);
+                co_await ws_.async_write(net::buffer("AUTH_FAILED"));
                 co_return;
             }
             
@@ -184,15 +208,15 @@ net::awaitable<void> WebSocketSession::handle_message(const std::string& message
             {
                 is_controller_ = true;
                 controller_->add_viewer(shared_from_this());
-                co_await ws_.async_write(net::buffer("AUTH_CONTROLLER_SUCCESS"), net::use_awaitable);
+                send_frame("AUTH_CONTROLLER_SUCCESS");
             } 
             else 
             {
                 controller_->add_viewer(shared_from_this());
-                co_await ws_.async_write(net::buffer("AUTH_VIEWER_SUCCESS"), net::use_awaitable);
+                send_frame("AUTH_VIEWER_SUCCESS");
                 
                 std::string status = controller_->is_streaming() ? "STREAM_ACTIVE" : "STREAM_INACTIVE";
-                co_await ws_.async_write(net::buffer(status), net::use_awaitable);
+                send_frame(status);
             }
         } 
         else if (type == "config" && is_controller_) 
@@ -202,21 +226,22 @@ net::awaitable<void> WebSocketSession::handle_message(const std::string& message
             int fps = j.value("fps", 10);
             
             co_await controller_->start_streaming(camera_index, resolution, fps);
-            co_await ws_.async_write(net::buffer("CONFIG_APPLIED"), net::use_awaitable);
+            send_frame("CONFIG_APPLIED");
         } 
         else if (type == "stop" && is_controller_) 
         {
             co_await controller_->stop_streaming();
-            co_await ws_.async_write(net::buffer("STREAM_STOPPED"), net::use_awaitable);
+            send_frame("STREAM_STOPPED");
         } 
         else 
         {
-            co_await ws_.async_write(net::buffer("UNKNOWN_COMMAND"), net::use_awaitable);
+            send_frame("UNKNOWN_COMMAND");
         }
     } 
     catch (const std::exception& e) 
     {
         logger->error("Message handling error: {}", e.what());
         std::string error_msg = "ERROR: " + std::string(e.what());
+        send_frame(error_msg);
     }
 }

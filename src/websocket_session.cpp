@@ -91,9 +91,31 @@ net::awaitable<void> WebSocketSession::do_write()
             co_await ws_.async_write(net::buffer(frame), net::use_awaitable);
         }
     }
-    catch (const std::exception& e) {
-        logger->error("Write error: {}", e.what());
-        close();
+    catch (const beast::system_error& e) 
+    {
+        if (e.code() == net::error::operation_aborted || 
+            e.code() == websocket::error::closed) 
+        {
+            // Игнорируем ошибки, связанные с закрытием соединения
+            logger->debug("Write aborted due to closed connection: {}", e.what());
+        } 
+        else 
+        {
+            logger->error("Write error: {}", e.what());
+            close();
+        }
+    }
+    catch (const std::exception& e) 
+    {
+        if (ws_.is_open()) 
+        {
+            logger->error("Write error: {}", e.what());
+            close();
+        } 
+        else 
+        {
+            logger->debug("Write error on closed socket: {}", e.what());
+        }
     }
     is_writing_ = false;
 }

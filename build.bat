@@ -21,21 +21,33 @@ for %%A in (%*) do (
 )
 
 if exist "%BUILD_DIR%" (
+    echo.
     echo Deleting a directory %BUILD_DIR%...
     rmdir /s /q "%BUILD_DIR%"
 )
 
+echo.
 echo Creating a directory %BUILD_DIR%...
 mkdir "%BUILD_DIR%"
 
+echo.
 echo Going to the directory %BUILD_DIR%...
 cd "%BUILD_DIR%"
 
+echo.
 echo CMake execution with BUILD_TESTS=%BUILD_TESTS%...
 cmake -DBUILD_TESTS=%BUILD_TESTS% .. -G "Visual Studio 17 2022"
 
+echo.
 echo Project assembly in %CONFIGURATION% configuration...
 cmake --build . --config %CONFIGURATION%
 
-echo The project has been successfully assembled.
+:: Проверка кода возврата сборки
+echo.
+if %ERRORLEVEL% equ 0 (
+    echo The project has been successfully assembled.
+) else (
+    echo The project assembly failed with error code %ERRORLEVEL%.
+)
+
 endlocal

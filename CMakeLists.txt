@@ -39,6 +39,8 @@ set(SERVER_SOURCES
     src/video_source.cpp
     src/ascii_converter.cpp
     src/logger.cpp
+    src/api_key_manager.cpp
+    src/stream_controller.cpp
 )
 
 # Список исходных файлов для тестов
@@ -49,6 +51,8 @@ set(TEST_SOURCES
     src/ascii_converter.cpp
     src/video_source.cpp
     src/logger.cpp
+    src/api_key_manager.cpp
+    src/stream_controller.cpp
 )
 
 # Создание исполняемого файла для сервера

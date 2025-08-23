@@ -1,13 +1,11 @@
 #include "server.hpp"
 #include "http_session.hpp"
+#include "stream_controller.hpp"
 #include "logger.hpp"
 #include "api_key_manager.hpp"
 
-#include <boost/asio/dispatch.hpp>
-#include <memory>
-
-server::server(net::io_context& ioc, tcp::endpoint endpoint, std::string doc_root)
-    : ioc_(ioc), acceptor_(ioc), doc_root_(std::move(doc_root))
+Server::Server(net::io_context& ioc, tcp::endpoint endpoint, std::string doc_root)
+    : ioc_(ioc), acceptor_(ioc), doc_root_(std::move(doc_root)) 
 {
     boost::system::error_code ec;
     
@@ -24,19 +22,18 @@ server::server(net::io_context& ioc, tcp::endpoint endpoint, std::string doc_roo
     if(ec) throw boost::system::system_error(ec);
 
     api_key_ = APIKeyManager::generate_key();
+    stream_controller_ = std::make_shared<StreamController>(ioc);
 
-    api_key_ = APIKeyManager::generate_key();
     auto logger = Logger::get();
     logger->info("Server API key: {}", api_key_);
-
 }
 
-void server::run() 
+void Server::run() 
 {
     do_accept();
 }
 
-void server::do_accept() 
+void Server::do_accept() 
 {
     acceptor_.async_accept(
         net::make_strand(ioc_),
@@ -46,12 +43,12 @@ void server::do_accept()
             {
                 logger->info("New connection from: {}", 
                     socket.remote_endpoint().address().to_string());
-                std::make_shared<http_session>(
+                std::make_shared<HttpSession>(
                     std::move(socket), 
                     self,
                     self->doc_root_)->run();
-            }
-            else
+            } 
+            else 
             {
                 logger->error("Accept error: {}", ec.message());
             }
@@ -59,10 +56,10 @@ void server::do_accept()
         });
 }
 
-std::shared_ptr<server> make_server(
+std::shared_ptr<Server> make_server(
     net::io_context& ioc, tcp::endpoint endpoint, std::string doc_root) 
 {
-    auto srv = std::make_shared<server>(ioc, endpoint, doc_root);
+    auto srv = std::make_shared<Server>(ioc, endpoint, doc_root);
     srv->run();
     return srv;
 }

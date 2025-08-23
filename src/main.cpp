@@ -15,7 +15,7 @@ int main()
         // Конфигурация сервера
         const std::string address = "0.0.0.0";
         const unsigned short port = 8080;
-        const std::string doc_root = "../web";
+        const std::string doc_root = "../../web";
         
         // Запуск сервера
         net::io_context ioc;

@@ -1,53 +1,80 @@
 #include "websocket_session.hpp"
-#include "video_source.hpp"
-#include "ascii_converter.hpp"
-#include "logger.hpp"
 #include "server.hpp"
+#include "logger.hpp"
 
-#include <iostream>
-#include <opencv2/opencv.hpp>
-#include <opencv2/imgproc.hpp>
 #include <nlohmann/json.hpp>
 
-namespace beast = boost::beast;
-namespace http = beast::http;
-namespace websocket = beast::websocket;
-namespace net = boost::asio;
-using tcp = net::ip::tcp;
+WebSocketSession::WebSocketSession(beast::tcp_stream stream, std::shared_ptr<StreamController> controller, std::shared_ptr<Server> server)
+    : ws_(std::move(stream)), controller_(controller), server_(server) {}
 
-websocket_session::websocket_session(
-    beast::tcp_stream stream,
-    std::unique_ptr<IVideoSource> video_source,
-    std::unique_ptr<IAsciiConverter> ascii_converter)
-    : ws_(std::move(stream)),
-      video_source_(std::move(video_source)),
-      ascii_converter_(std::move(ascii_converter)),
-      frame_timer_(ws_.get_executor()) 
-{}
-
-websocket_session::~websocket_session() 
+WebSocketSession::~WebSocketSession() 
 {
-    if (video_source_) 
-    {
-        video_source_.reset();
-    }
     auto logger = Logger::get();
+    
+    if (is_controller_) 
+    {
+        net::co_spawn(ws_.get_executor(),
+            [controller = controller_] { return controller->stop_streaming(); },
+            net::detached);
+    } 
+    else if (is_authenticated_) 
+    {
+        net::co_spawn(ws_.get_executor(),
+            [controller = controller_, self = shared_from_this()] { 
+                return controller->remove_viewer(self); 
+            },
+            net::detached);
+    }
+    
     logger->debug("WebSocket session destroyed");
-    frame_timer_.cancel();
 }
 
-void websocket_session::run(http::request<http::string_body> req) 
+void WebSocketSession::run(http::request<http::string_body> req) 
 {
     net::co_spawn(
         ws_.get_executor(),
         [self = shared_from_this(), req = std::move(req)]() mutable {
             return self->do_run(std::move(req));
         },
-        net::detached
-    );
+        net::detached);
 }
 
-net::awaitable<void> websocket_session::do_run(http::request<http::string_body> req) 
+void WebSocketSession::send_frame(const std::string& frame) 
+{
+    // Создаем shared_ptr для строки, чтобы гарантировать ее время жизни
+    auto frame_ptr = std::make_shared<std::string>(frame);
+    
+    net::post(ws_.get_executor(),
+        [self = shared_from_this(), frame_ptr] {
+            if (self->ws_.is_open()) 
+            {
+                self->ws_.async_write(net::buffer(*frame_ptr),
+                    [self, frame_ptr](beast::error_code ec, size_t) {
+                        if (ec) 
+                        {
+                            self->close();
+                        }
+                    });
+            }
+        });
+}
+
+void WebSocketSession::close() 
+{
+    if (ws_.is_open()) 
+    {
+        ws_.async_close(websocket::close_code::normal,
+            [self = shared_from_this()](beast::error_code ec) {
+                if (ec) 
+                {
+                    auto logger = Logger::get();
+                    logger->error("WebSocket close error: {}", ec.message());
+                }
+            });
+    }
+}
+
+net::awaitable<void> WebSocketSession::do_run(http::request<http::string_body> req) 
 {
     auto logger = Logger::get();
     
@@ -55,8 +82,8 @@ net::awaitable<void> websocket_session::do_run(http::request<http::string_body> 
     {
         ws_.set_option(
             websocket::stream_base::timeout::suggested(
-                beast::role_type::server));
-        
+            beast::role_type::server));
+
         ws_.set_option(websocket::stream_base::decorator(
             [](websocket::response_type& res) {
                 res.set(http::field::server, "ASCII Stream Server");
@@ -67,10 +94,10 @@ net::awaitable<void> websocket_session::do_run(http::request<http::string_body> 
         
         while (ws_.is_open()) 
         {
-            try 
+            try
             {
                 co_await do_read();
-            } 
+            }
             catch (const beast::system_error& e) 
             {
                 if (e.code() == websocket::error::closed) 
@@ -78,9 +105,14 @@ net::awaitable<void> websocket_session::do_run(http::request<http::string_body> 
                     logger->info("WebSocket connection closed gracefully");
                     break;
                 }
+
+                if (ws_.is_open()) 
+                {
+                    close();
+                }
                 logger->error("WebSocket error: {}", e.what());
                 break;
-            } 
+            }
             catch (const std::exception& e) 
             {
                 logger->error("Error in do_run: {}", e.what());
@@ -100,18 +132,16 @@ net::awaitable<void> websocket_session::do_run(http::request<http::string_body> 
             logger->info("WebSocket connection closed");
         }
     }
-    
-    release_camera();
 }
 
-net::awaitable<void> websocket_session::do_read() 
+net::awaitable<void> WebSocketSession::do_read() 
 {
     auto logger = Logger::get();
     
     try 
     {
         buffer_.clear();
-        auto bytes = co_await ws_.async_read(buffer_, net::use_awaitable);
+        co_await ws_.async_read(buffer_, net::use_awaitable);
         
         auto message = beast::buffers_to_string(buffer_.data());
         logger->debug("Received message: {}", message);
@@ -128,7 +158,7 @@ net::awaitable<void> websocket_session::do_read()
     }
 }
 
-net::awaitable<void> websocket_session::handle_message(const std::string& message) 
+net::awaitable<void> WebSocketSession::handle_message(const std::string& message) 
 {
     auto logger = Logger::get();
     
@@ -137,141 +167,56 @@ net::awaitable<void> websocket_session::handle_message(const std::string& messag
         auto j = nlohmann::json::parse(message);
         std::string type = j["type"];
         
-        if (type == "config") 
+        if (type == "auth") 
         {
-            co_await handle_config(j);
-        } 
-        else if (type == "stop") 
-        {
-            is_streaming_ = false;
-            frame_timer_.cancel();
-            release_camera();
-            co_await ws_.async_write(net::buffer("Stream stopped"), net::use_awaitable);
-        } 
-        else if (type == "auth") 
-        {
-            std::string received_key = j["api_key"];
-            co_await ws_.async_write(net::buffer("AUTH_SUCCESS"), net::use_awaitable);
+            std::string api_key = j["api_key"];
+            std::string role = j.value("role", "viewer");
             
-            if (!is_streaming_) 
+            if (api_key != server_->api_key()) 
             {
-                co_await start_streaming();
+                co_await ws_.async_write(net::buffer("AUTH_FAILED"), net::use_awaitable);
+                co_return;
             }
+            
+            is_authenticated_ = true;
+            
+            if (role == "controller") 
+            {
+                is_controller_ = true;
+                controller_->add_viewer(shared_from_this());
+                co_await ws_.async_write(net::buffer("AUTH_CONTROLLER_SUCCESS"), net::use_awaitable);
+            } 
+            else 
+            {
+                controller_->add_viewer(shared_from_this());
+                co_await ws_.async_write(net::buffer("AUTH_VIEWER_SUCCESS"), net::use_awaitable);
+                
+                std::string status = controller_->is_streaming() ? "STREAM_ACTIVE" : "STREAM_INACTIVE";
+                co_await ws_.async_write(net::buffer(status), net::use_awaitable);
+            }
+        } 
+        else if (type == "config" && is_controller_) 
+        {
+            int camera_index = j.value("camera_index", 0);
+            std::string resolution = j.value("resolution", "120x90");
+            int fps = j.value("fps", 10);
+            
+            co_await controller_->start_streaming(camera_index, resolution, fps);
+            co_await ws_.async_write(net::buffer("CONFIG_APPLIED"), net::use_awaitable);
+        } 
+        else if (type == "stop" && is_controller_) 
+        {
+            co_await controller_->stop_streaming();
+            co_await ws_.async_write(net::buffer("STREAM_STOPPED"), net::use_awaitable);
         } 
         else 
         {
-            co_await ws_.async_write(buffer_.data(), net::use_awaitable);
+            co_await ws_.async_write(net::buffer("UNKNOWN_COMMAND"), net::use_awaitable);
         }
     } 
     catch (const std::exception& e) 
     {
         logger->error("Message handling error: {}", e.what());
         std::string error_msg = "ERROR: " + std::string(e.what());
-    }
-}
-
-net::awaitable<void> websocket_session::handle_config(const nlohmann::json& j) 
-{
-    auto logger = Logger::get();
-    
-    try 
-    {
-        // Parse resolution "120x90"
-        std::string res = j["resolution"];
-        size_t pos = res.find('x');
-        frame_width_ = std::stoi(res.substr(0, pos));
-        frame_height_ = std::stoi(res.substr(pos + 1));
-
-        int camera_index = j.value("camera_index", 0);
-        
-        if (j.contains("fps")) 
-        {
-            fps_ = j["fps"];
-        }
-        
-        release_camera();
-        video_source_ = std::make_unique<VideoSource>();
-        video_source_->open(camera_index);
-        video_source_->set_resolution(frame_width_ * 2, frame_height_ * 2);
-        
-        logger->info("New stream config: {} FPS, resolution: {}x{}", 
-                    fps_, frame_width_, frame_height_);
-        
-        co_await start_streaming();
-    } 
-    catch (const std::exception& e) 
-    {
-        logger->error("Config error: {}", e.what());
-        throw;
-    }
-}
-
-net::awaitable<void> websocket_session::start_streaming() 
-{
-    auto logger = Logger::get();
-    
-    if (is_streaming_) 
-    {
-        co_return;
-    }
-    
-    if (!video_source_ || !video_source_->is_available()) 
-    {
-        throw std::runtime_error("Video source not available");
-    }
-    
-    logger->info("Starting video streaming");
-    is_streaming_ = true;
-    
-    net::co_spawn(
-        ws_.get_executor(),
-        [self = shared_from_this()] {
-            return self->send_frames();
-        },
-        net::detached
-    );
-}
-
-net::awaitable<void> websocket_session::send_frames() 
-{
-    auto logger = Logger::get();
-    
-    while (is_streaming_ && ws_.is_open()) 
-    {
-        try 
-        {
-            cv::Mat frame = video_source_->capture_frame();
-            if (frame.empty()) 
-            {
-                logger->warn("Empty frame captured, skipping");
-                co_await net::steady_timer(ws_.get_executor(), 
-                    std::chrono::milliseconds(1000 / fps_)).async_wait(net::use_awaitable);
-                continue;
-            }
-            
-            std::string ascii_data = ascii_converter_->convert(frame, frame_width_, frame_height_);
-            co_await ws_.async_write(net::buffer(ascii_data), net::use_awaitable);
-            
-            co_await net::steady_timer(ws_.get_executor(), 
-                std::chrono::milliseconds(1000 / fps_)).async_wait(net::use_awaitable);
-        } 
-        catch (const std::exception& e) 
-        {
-            logger->error("Frame sending error: {}", e.what());
-            break;
-        }
-    }
-    
-    is_streaming_ = false;
-}
-
-void websocket_session::release_camera()
-{
-    if (video_source_) 
-    {
-        auto logger = Logger::get();
-        logger->info("Releasing camera resources");
-        video_source_->close();
-        video_source_.reset();
     }
 }

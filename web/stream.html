@@ -53,6 +53,7 @@
             constructor() {
                 this.output = document.getElementById('asciiOutput');
                 this.ws = null;
+                this.isConnected = false;
                 
                 document.getElementById('connectBtn').addEventListener('click', () => {
                     this.connect();
@@ -80,28 +81,37 @@
                 this.ws = new WebSocket(endpoint);
                 
                 this.ws.onopen = () => {
-                    this.output.textContent = 'Connected! Waiting for data...';
+                    this.output.textContent = 'Authenticating...';
                     
-                    // Отправляем API ключ для аутентификации
-                    if (apiKey) {
-                        this.ws.send(JSON.stringify({
-                            type: 'auth',
-                            api_key: apiKey
-                        }));
-                    }
+                    this.ws.send(JSON.stringify({
+                        type: 'auth',
+                        api_key: apiKey,
+                        role: 'viewer'
+                    }));
                 };
                 
                 this.ws.onmessage = (event) => {
-                    this.output.textContent = event.data;
+                    if (event.data === "AUTH_VIEWER_SUCCESS") {
+                        this.output.textContent = 'Authenticated! Waiting for stream...';
+                        this.isConnected = true;
+                    } else if (event.data === "STREAM_ACTIVE") {
+                        this.output.textContent = 'Stream is active. Receiving data...';
+                    } else if (event.data === "STREAM_INACTIVE") {
+                        this.output.textContent = 'Stream is inactive. Waiting...';
+                    } else {
+                        this.output.textContent = event.data;
+                    }
                 };
                 
                 this.ws.onerror = (error) => {
                     console.error('WebSocket error:', error);
                     this.output.textContent = 'Connection error!';
+                    this.isConnected = false;
                 };
                 
                 this.ws.onclose = () => {
                     this.output.textContent = 'Connection closed.';
+                    this.isConnected = false;
                 };
             }
         }

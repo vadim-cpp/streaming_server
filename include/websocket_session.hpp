@@ -38,4 +38,6 @@ private:
     bool is_writing_ = false;
     bool is_authenticated_ = false;
     bool is_controller_ = false;
+
+    static constexpr size_t MAX_QUEUE_SIZE = 10;
 };

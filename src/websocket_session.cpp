@@ -52,10 +52,16 @@ void WebSocketSession::send_frame(const std::string& frame)
     net::post(ws_.get_executor(),
         [self = shared_from_this(), frame_ptr] {
             if (!self->ws_.is_open()) return;
+
+            if (self->write_queue_.size() >= MAX_QUEUE_SIZE) 
+            {
+                self->write_queue_.pop_front();
+            }
             
             self->write_queue_.push_back(*frame_ptr);
             
-            if (!self->is_writing_) {
+            if (!self->is_writing_) 
+            {
                 self->is_writing_ = true;
                 net::co_spawn(self->ws_.get_executor(),
                     [self] { return self->do_write(); },

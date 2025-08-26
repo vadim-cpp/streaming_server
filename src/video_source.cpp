@@ -48,16 +48,7 @@ std::vector<VideoSource::CameraInfo> VideoSource::list_cameras()
 VideoSource::VideoSource() 
 {
     auto logger = Logger::get();
-    cap_.open(0);
-    if (!cap_.isOpened()) 
-    {
-        logger->error("Could not open video source");
-        throw std::runtime_error("Could not open video source");
-    }
-    cap_.set(cv::CAP_PROP_FRAME_WIDTH, width_);
-    cap_.set(cv::CAP_PROP_FRAME_HEIGHT, height_);
-
-    logger->info("Video source initialized");
+    logger->debug("VideoSource created");
 }
 
 VideoSource::~VideoSource() 
@@ -73,7 +64,7 @@ void VideoSource::open(int index)
     
     if (cap_.isOpened()) 
     {
-        cap_.release();
+        close();
     }
     
     camera_index_ = index;
@@ -87,6 +78,8 @@ void VideoSource::open(int index)
     
     cap_.set(cv::CAP_PROP_FRAME_WIDTH, width_);
     cap_.set(cv::CAP_PROP_FRAME_HEIGHT, height_);
+    is_opened_ = true;
+
     logger->info("Video source initialized at index {}", camera_index_);
 }
 
@@ -97,12 +90,13 @@ void VideoSource::close()
         auto logger = Logger::get();
         logger->info("Releasing video source");
         cap_.release();
+        is_opened_ = false;
     }
 }
 
 bool VideoSource::is_available() const 
 {
-    return cap_.isOpened();
+    return is_opened_;
 }
 
 cv::Mat VideoSource::capture_frame() 

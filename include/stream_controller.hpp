@@ -1,7 +1,7 @@
 #pragma once
 
-#include "video_source.hpp"
-#include "ascii_converter.hpp"
+#include "video_source_interface.hpp"
+#include "ascii_converter_interface.hpp"
 
 #include <memory>
 #include <string>
@@ -20,7 +20,11 @@ class WebSocketSession;
 class StreamController : public std::enable_shared_from_this<StreamController> 
 {
 public:
-    StreamController(net::io_context& ioc);
+    StreamController(
+        net::io_context& ioc,
+        std::shared_ptr<IVideoSource> video_source,
+        std::shared_ptr<IAsciiConverter> ascii_converter
+    );
     ~StreamController();
     
     net::awaitable<void> start_streaming(int camera_index, const std::string& resolution, int fps);
@@ -39,8 +43,8 @@ private:
 
     net::io_context& ioc_;
     net::strand<net::io_context::executor_type> strand_;
-    std::unique_ptr<VideoSource> video_source_;
-    std::unique_ptr<AsciiConverter> ascii_converter_;
+    std::shared_ptr<IVideoSource> video_source_;
+    std::shared_ptr<IAsciiConverter> ascii_converter_;
     std::vector<std::weak_ptr<WebSocketSession>> viewers_;
     
     std::atomic<int> frame_width_{120};

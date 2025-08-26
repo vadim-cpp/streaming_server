@@ -3,10 +3,17 @@
 #include "logger.hpp"
 #include <opencv2/opencv.hpp>
 
-StreamController::StreamController(net::io_context& ioc)
-    : ioc_(ioc)
-    , strand_(net::make_strand(ioc))
-    , frame_timer_(ioc) {}
+StreamController::StreamController(
+    net::io_context& ioc,
+    std::shared_ptr<IVideoSource> video_source,
+    std::shared_ptr<IAsciiConverter> ascii_converter
+)
+    : ioc_(ioc),
+      strand_(net::make_strand(ioc)),
+      frame_timer_(ioc),
+      video_source_(std::move(video_source)),
+      ascii_converter_(std::move(ascii_converter))
+{}
 
 StreamController::~StreamController() 
 {
@@ -32,11 +39,8 @@ net::awaitable<void> StreamController::start_streaming(int camera_index, const s
         frame_height_ = std::stoi(resolution.substr(pos + 1));
         fps_ = fps;
         
-        video_source_ = std::make_unique<VideoSource>();
         video_source_->open(camera_index);
         video_source_->set_resolution(frame_width_ * 2, frame_height_ * 2);
-        
-        ascii_converter_ = std::make_unique<AsciiConverter>();
         ascii_converter_->set_ascii_chars("@%#*+=-:. ");
         
         is_streaming_ = true;
@@ -159,10 +163,8 @@ void StreamController::cleanup()
     if (video_source_) 
     {
         video_source_->close();
-        video_source_.reset();
     }
     
-    ascii_converter_.reset();
     viewers_.clear();
     is_streaming_ = false;
 }

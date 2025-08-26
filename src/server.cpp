@@ -4,8 +4,16 @@
 #include "logger.hpp"
 #include "api_key_manager.hpp"
 
-Server::Server(net::io_context& ioc, tcp::endpoint endpoint, std::string doc_root)
-    : ioc_(ioc), acceptor_(ioc), doc_root_(std::move(doc_root)) 
+Server::Server(
+    net::io_context& ioc,
+    tcp::endpoint endpoint,
+    std::string doc_root,
+    std::shared_ptr<IVideoSource> video_source,
+    std::shared_ptr<IAsciiConverter> ascii_converter
+)
+    : ioc_(ioc), acceptor_(ioc), doc_root_(std::move(doc_root)),
+      video_source_(std::move(video_source)),
+      ascii_converter_(std::move(ascii_converter))
 {
     boost::system::error_code ec;
     
@@ -22,7 +30,8 @@ Server::Server(net::io_context& ioc, tcp::endpoint endpoint, std::string doc_roo
     if(ec) throw boost::system::system_error(ec);
 
     api_key_ = APIKeyManager::generate_key();
-    stream_controller_ = std::make_shared<StreamController>(ioc);
+    stream_controller_ = std::make_shared<StreamController>(
+        ioc, video_source_, ascii_converter_);
 
     auto logger = Logger::get();
     logger->info("Server API key: {}", api_key_);
@@ -57,9 +66,13 @@ void Server::do_accept()
 }
 
 std::shared_ptr<Server> make_server(
-    net::io_context& ioc, tcp::endpoint endpoint, std::string doc_root) 
+    net::io_context& ioc, 
+    tcp::endpoint endpoint, 
+    std::string doc_root,
+    std::shared_ptr<IVideoSource> video_source,
+    std::shared_ptr<IAsciiConverter> ascii_converter) 
 {
-    auto srv = std::make_shared<Server>(ioc, endpoint, doc_root);
+    auto srv = std::make_shared<Server>(ioc, endpoint, doc_root, video_source, ascii_converter);
     srv->run();
     return srv;
 }

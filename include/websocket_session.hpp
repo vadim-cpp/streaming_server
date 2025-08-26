@@ -29,6 +29,10 @@ private:
     net::awaitable<void> do_read();
     net::awaitable<void> handle_message(const std::string& message);
     net::awaitable<void> do_write();
+
+    size_t get_queue_size() const { return write_queue_.size(); }
+    bool is_authenticated() const { return is_authenticated_; }
+    bool is_controller() const { return is_controller_; }
     
     websocket::stream<beast::tcp_stream> ws_;
     std::shared_ptr<StreamController> controller_;

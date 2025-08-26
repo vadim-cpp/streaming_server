@@ -43,18 +43,6 @@ set(SERVER_SOURCES
     src/stream_controller.cpp
 )
 
-# Список исходных файлов для тестов
-set(TEST_SOURCES
-    tests/tests_main.cpp
-    tests/test_ascii_converter.cpp
-    tests/test_video_source.cpp
-    src/ascii_converter.cpp
-    src/video_source.cpp
-    src/logger.cpp
-    src/api_key_manager.cpp
-    src/stream_controller.cpp
-)
-
 # Создание исполняемого файла для сервера
 add_executable(server ${SERVER_SOURCES})
 
@@ -100,29 +88,5 @@ add_custom_command(TARGET server POST_BUILD
 option(BUILD_TESTS "Build tests" OFF)
 
 if(BUILD_TESTS)
-    # Поиск GoogleTest
-    find_package(GTest REQUIRED)
-    
-    # Создание тестовой цели
-    add_executable(tests ${TEST_SOURCES})
-
-    target_include_directories(tests PRIVATE 
-        include
-        ${OpenCV_INCLUDE_DIRS}
-        ${Boost_INCLUDE_DIRS}
-    )
-    
-    target_link_libraries(tests PRIVATE
-        Boost::system
-        GTest::gtest_main
-        GTest::gmock
-        GTest::gmock_main
-        ${OpenCV_LIBS}
-        nlohmann_json::nlohmann_json
-        spdlog::spdlog
-    )
-    
-    # Добавление в CTest
-    include(GoogleTest)
-    gtest_discover_tests(tests)
+    add_subdirectory(tests)
 endif()

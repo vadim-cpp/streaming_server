@@ -17,7 +17,7 @@ int main()
         // Конфигурация сервера
         const std::string address = "0.0.0.0";
         const unsigned short port = 8080;
-        const std::string doc_root = "../../web";
+        const std::string doc_root = "./web";
 
         auto video_source = std::make_shared<VideoSource>();
         auto ascii_converter = std::make_shared<AsciiConverter>();

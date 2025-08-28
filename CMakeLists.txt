@@ -1,5 +1,4 @@
 cmake_minimum_required(VERSION 3.15)
-set(CMAKE_TOOLCHAIN_FILE "C:/vcpkg/scripts/buildsystems/vcpkg.cmake" CACHE STRING "Vcpkg toolchain file")
 project(ascii_streamer)
 
 # Установка стандарта C++
@@ -11,6 +10,17 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 if(WIN32)
     add_compile_definitions(_WIN32_WINNT=0x0601)
     add_compile_options(/bigobj)
+    
+    # Использование vcpkg
+    if(EXISTS "C:/vcpkg/scripts/buildsystems/vcpkg.cmake")
+        set(CMAKE_TOOLCHAIN_FILE "C:/vcpkg/scripts/buildsystems/vcpkg.cmake" CACHE STRING "Vcpkg toolchain file")
+    endif()
+endif()
+
+# Настройка для Linux
+if(UNIX)
+    add_compile_options(-pthread)
+    add_link_options(-pthread)
 endif()
 
 # Поиск OpenCV
@@ -28,6 +38,7 @@ find_package(Boost 1.70 REQUIRED COMPONENTS system thread)
 # Поиск nlohmann-json
 find_package(nlohmann_json REQUIRED)
 
+# Поиск spdlog
 find_package(spdlog REQUIRED)
 
 # Список исходных файлов для сервера
@@ -61,7 +72,7 @@ target_link_libraries(server PRIVATE
     spdlog::spdlog
 )
 
-# Для Windows дополнительно линкуем с системными библиотеками
+# Платформозависимые настройки линковки
 if(WIN32)
     target_link_libraries(server PRIVATE 
         ws2_32
@@ -71,18 +82,29 @@ if(WIN32)
         setupapi
         winmm
     )
+elseif(UNIX)
+    target_link_libraries(server PRIVATE pthread)
 endif()
 
 # Копирование веб-ресурсов
-file(GLOB WEB_FILES "${CMAKE_CURRENT_SOURCE_DIR}/web/*")
-add_custom_command(TARGET server POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E make_directory 
-        "${CMAKE_CURRENT_BINARY_DIR}/web"
-    COMMAND ${CMAKE_COMMAND} -E copy
-        ${WEB_FILES}
-        "${CMAKE_CURRENT_BINARY_DIR}/web"
-    COMMENT "Copying web resources"
-)
+if(WIN32)
+    file(GLOB WEB_FILES "${CMAKE_CURRENT_SOURCE_DIR}/web/*")
+    add_custom_command(TARGET server POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory 
+            "${CMAKE_CURRENT_BINARY_DIR}/web"
+        COMMAND ${CMAKE_COMMAND} -E copy
+            ${WEB_FILES}
+            "${CMAKE_CURRENT_BINARY_DIR}/web"
+        COMMENT "Copying web resources"
+    )
+else()
+    add_custom_command(TARGET server POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "${CMAKE_CURRENT_SOURCE_DIR}/web"
+            "${CMAKE_CURRENT_BINARY_DIR}/web"
+        COMMENT "Copying web resources"
+    )
+endif()
 
 # Включение тестов
 option(BUILD_TESTS "Build tests" OFF)

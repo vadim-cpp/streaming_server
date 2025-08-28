@@ -226,7 +226,7 @@ net::awaitable<void> WebSocketSession::handle_message(const std::string& message
             
             if (api_key != server_->api_key()) 
             {
-                co_await ws_.async_write(net::buffer("AUTH_FAILED"));
+                co_await ws_.async_write(net::buffer("AUTH_FAILED"), net::use_awaitable);
                 co_return;
             }
             

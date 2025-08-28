@@ -30,6 +30,11 @@ std::vector<VideoSource::CameraInfo> VideoSource::list_cameras()
                     info.name = buffer;
                 }
                 #endif
+
+                // Linux-специфичный код (V4L2)
+                #ifdef __linux__
+                info.name = "/dev/video" + std::to_string(i);
+                #endif
             } 
             catch (...) 
             {
@@ -68,7 +73,12 @@ void VideoSource::open(int index)
     }
     
     camera_index_ = index;
+    
+    #ifdef __linux__
+    cap_.open(camera_index_, cv::CAP_V4L2);
+    #else
     cap_.open(camera_index_);
+    #endif
     
     if (!cap_.isOpened()) 
     {

@@ -23,7 +23,8 @@ public:
     
 private:
     cv::VideoCapture cap_;
-    int width_ = 640;
-    int height_ = 480;
-    int camera_index_ = 0;
+    int camera_index_{-1};
+    int width_{640};
+    int height_{480};
+    bool is_opened_{false};
 };

@@ -1,6 +1,25 @@
 cmake_minimum_required(VERSION 3.15)
-set(CMAKE_TOOLCHAIN_FILE "C:/vcpkg/scripts/buildsystems/vcpkg.cmake" CACHE STRING "Vcpkg toolchain file")
 project(tests)
+
+# Установка стандарта C++
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
+# Настройка для Windows
+if(WIN32)
+    add_compile_definitions(_WIN32_WINNT=0x0601)
+    
+    if(EXISTS "C:/vcpkg/scripts/buildsystems/vcpkg.cmake")
+        set(CMAKE_TOOLCHAIN_FILE "C:/vcpkg/scripts/buildsystems/vcpkg.cmake" CACHE STRING "Vcpkg toolchain file")
+    endif()
+endif()
+
+# Настройка для Linux
+if(UNIX)
+    add_compile_options(-pthread)
+    add_link_options(-pthread)
+endif()
 
 # Поиск необходимых библиотек
 find_package(OpenCV REQUIRED)
@@ -37,6 +56,20 @@ target_link_libraries(tests PRIVATE
     nlohmann_json::nlohmann_json
     spdlog::spdlog
 )
+
+# Платформозависимые настройки линковки
+if(WIN32)
+    target_link_libraries(tests PRIVATE 
+        ws2_32
+        comctl32
+        gdi32
+        ole32
+        setupapi
+        winmm
+    )
+elseif(UNIX)
+    target_link_libraries(tests PRIVATE pthread)
+endif()
 
 # Добавление в CTest
 include(GoogleTest)

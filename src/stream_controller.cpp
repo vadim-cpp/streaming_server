@@ -24,7 +24,7 @@ net::awaitable<void> StreamController::start_streaming(int camera_index, const s
 {
     auto logger = Logger::get();
     
-    co_await net::dispatch(strand_);
+    co_await net::dispatch(strand_, net::use_awaitable);
     
     if (is_streaming_) 
     {
@@ -65,7 +65,7 @@ net::awaitable<void> StreamController::stop_streaming()
 {
     auto logger = Logger::get();
     
-    co_await net::dispatch(strand_);
+    co_await net::dispatch(strand_, net::use_awaitable);
     
     if (!is_streaming_) 
     {
@@ -101,7 +101,7 @@ void StreamController::add_viewer(std::shared_ptr<WebSocketSession> viewer)
 
 net::awaitable<void> StreamController::remove_viewer(std::shared_ptr<WebSocketSession> viewer) 
 {
-    co_await net::dispatch(strand_);
+    co_await net::dispatch(strand_, net::use_awaitable);
     
     viewers_.erase(
         std::remove_if(viewers_.begin(), viewers_.end(),
@@ -142,7 +142,7 @@ net::awaitable<void> StreamController::capture_loop()
 
 net::awaitable<void> StreamController::broadcast_frame(const std::string& frame) 
 {
-    co_await net::dispatch(strand_);
+    co_await net::dispatch(strand_, net::use_awaitable);
     
     for (auto it = viewers_.begin(); it != viewers_.end(); ) 
     {

@@ -99,10 +99,13 @@ net::awaitable<void> WebSocketSession::do_write()
     }
     catch (const beast::system_error& e) 
     {
+        // Игнорируем ошибки, связанные с закрытием соединения
         if (e.code() == net::error::operation_aborted || 
-            e.code() == websocket::error::closed) 
+            e.code() == websocket::error::closed ||
+            e.code() == net::error::eof ||
+            e.code() == net::error::connection_reset ||
+            e.code() == net::error::connection_aborted) 
         {
-            // Игнорируем ошибки, связанные с закрытием соединения
             logger->debug("Write aborted due to closed connection: {}", e.what());
         } 
         else 
@@ -152,9 +155,13 @@ net::awaitable<void> WebSocketSession::do_run(http::request<http::string_body> r
             }
             catch (const beast::system_error& e) 
             {
-                if (e.code() == websocket::error::closed) 
+                // Игнорируем ошибки, связанные с закрытием соединения
+                if (e.code() == websocket::error::closed ||
+                    e.code() == net::error::eof ||
+                    e.code() == net::error::connection_reset ||
+                    e.code() == net::error::connection_aborted) 
                 {
-                    logger->info("WebSocket connection closed gracefully");
+                    logger->info("WebSocket connection closed by client");
                     break;
                 }
 
@@ -174,14 +181,17 @@ net::awaitable<void> WebSocketSession::do_run(http::request<http::string_body> r
     } 
     catch (const std::exception& e) 
     {
+        // Игнорируем ошибки, связанные с закрытием соединения
         if (strstr(e.what(), "closed") == nullptr &&
-            strstr(e.what(), "The WebSocket stream was gracefully closed") == nullptr) 
+            strstr(e.what(), "The WebSocket stream was gracefully closed") == nullptr &&
+            strstr(e.what(), "Connection reset") == nullptr &&
+            strstr(e.what(), "Connection aborted") == nullptr) 
         {
             logger->error("WebSocket error: {}", e.what());
         } 
         else 
         {
-            logger->info("WebSocket connection closed");
+            logger->info("WebSocket connection closed by client");
         }
     }
 }
@@ -202,9 +212,16 @@ net::awaitable<void> WebSocketSession::do_read()
     } 
     catch (const beast::system_error& e) 
     {
-        if (e.code() != websocket::error::closed) 
+        if (e.code() != websocket::error::closed && 
+            e.code() != net::error::eof &&
+            e.code() != net::error::connection_reset &&
+            e.code() != net::error::connection_aborted) 
         {
             logger->error("WebSocket read error: {}", e.what());
+        }
+        else
+        {
+            logger->debug("WebSocket connection closed by client");
         }
         throw;
     }

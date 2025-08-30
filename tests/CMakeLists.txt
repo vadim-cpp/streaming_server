@@ -2,6 +2,16 @@ cmake_minimum_required(VERSION 3.15)
 set(CMAKE_TOOLCHAIN_FILE "C:/vcpkg/scripts/buildsystems/vcpkg.cmake" CACHE STRING "Vcpkg toolchain file")
 project(tests)
 
+# Установка стандарта C++
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
+# Настройка для Windows
+if(WIN32)
+    add_compile_definitions(_WIN32_WINNT=0x0601)
+endif()
+
 # Поиск необходимых библиотек
 find_package(OpenCV REQUIRED)
 find_package(Boost 1.70 REQUIRED COMPONENTS system thread)
@@ -14,9 +24,12 @@ set(TEST_SOURCES
     src/tests_main.cpp
     src/test_ascii_converter.cpp
     src/test_video_source.cpp
+    src/test_stream_controller.cpp
     ../src/ascii_converter.cpp
     ../src/video_source.cpp
     ../src/logger.cpp
+    ../src/stream_controller.cpp
+    ../src/websocket_session.cpp
 )
 
 # Создание тестовой цели

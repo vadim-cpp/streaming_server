@@ -36,7 +36,7 @@ cd "%BUILD_DIR%"
 
 echo.
 echo CMake execution with BUILD_TESTS=%BUILD_TESTS%...
-cmake -DBUILD_TESTS=%BUILD_TESTS% .. -G "Visual Studio 17 2022"
+cmake -DBUILD_TESTS=%BUILD_TESTS% ..
 
 echo.
 echo Project assembly in %CONFIGURATION% configuration...
@@ -49,5 +49,8 @@ if %ERRORLEVEL% equ 0 (
 ) else (
     echo The project assembly failed with error code %ERRORLEVEL%.
 )
+
+:: Ожидание нажатия клавиши перед закрытием консоли
+pause
 
 endlocal

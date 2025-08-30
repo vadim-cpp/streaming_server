@@ -1,10 +1,4 @@
 cmake_minimum_required(VERSION 3.15)
-project(ascii_streamer)
-
-# Установка стандарта C++
-set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
 
 # Настройка для Windows
 if(WIN32)
@@ -16,6 +10,13 @@ if(WIN32)
         set(CMAKE_TOOLCHAIN_FILE "C:/vcpkg/scripts/buildsystems/vcpkg.cmake" CACHE STRING "Vcpkg toolchain file")
     endif()
 endif()
+
+project(ascii_streamer)
+
+# Установка стандарта C++
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
 # Настройка для Linux
 if(UNIX)

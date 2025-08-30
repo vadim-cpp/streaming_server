@@ -8,6 +8,7 @@ class AsciiStreamer
         this.apiInfo = document.getElementById('apiInfo');
         this.copyApiBtn = document.getElementById('copyApiBtn');
         this.showApiBtn = document.getElementById('showApiBtn');
+        this.api_key = null;
         
         this.cameraSelect = document.getElementById('camera');
         this.loadCameras();
@@ -82,9 +83,13 @@ class AsciiStreamer
         this.output.textContent = "Starting stream...";
         this.isStreaming = true;
         
+        // Получаем API ключ перед созданием соединения
+        if (!this.api_key) 
+        {
+            this.api_key = await this.getApiKey();
+        }
+        
         this.ws = new WebSocket(`ws://${window.location.host}/stream`);
-        this.api_key = await this.getApiKey();
-        console.log(this.api_key)
         
         this.ws.onopen = () => {
             this.ws.send(JSON.stringify({
@@ -115,6 +120,11 @@ class AsciiStreamer
             {
                 this.output.textContent = "Stream started successfully";
             } 
+            else if (cleanedMessage === "STREAM_STOPPED") 
+            {
+                // Сервер подтвердил остановку стрима
+                this.updateUI(false);
+            } 
             else 
             {
                 this.output.textContent = cleanedMessage;
@@ -131,12 +141,13 @@ class AsciiStreamer
         };
     }
 
-    stop() 
+    async stop() 
     {
         if (this.ws && this.ws.readyState === WebSocket.OPEN) 
         {
             this.ws.send(JSON.stringify({ type: 'stop' }));
             
+            // Ждем подтверждения от сервера перед закрытием
             setTimeout(() => {
                 if (this.ws) {
                     this.ws.close();

@@ -1,19 +1,14 @@
 @echo off
 setlocal
 
-set "BUILD_DIR=build"
+set "BUILD_DIR=build_tests"
 
 :: Установка значения флага по умолчанию
-set "BUILD_TESTS=OFF"
 set "CONFIGURATION=Release"
 
 :: Проверка аргументов командной строки для изменения значения флага
 for %%A in (%*) do (
-    if "%%~A"=="tests--OFF" (
-        set "BUILD_TESTS=OFF"
-    ) else if "%%~A"=="tests--ON" (
-        set "BUILD_TESTS=ON"
-    ) else if "%%~A"=="config--Release" (
+    if "%%~A"=="config--Release" (
         set "CONFIGURATION=Release"
     ) else if "%%~A"=="config--Debug" (
         set "CONFIGURATION=Debug"
@@ -35,8 +30,8 @@ echo Going to the directory %BUILD_DIR%...
 cd "%BUILD_DIR%"
 
 echo.
-echo CMake execution with BUILD_TESTS=%BUILD_TESTS%...
-cmake -DBUILD_TESTS=%BUILD_TESTS% ..
+echo CMake execution...
+cmake ..
 
 echo.
 echo Project assembly in %CONFIGURATION% configuration...

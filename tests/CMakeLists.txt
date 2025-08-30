@@ -34,9 +34,12 @@ set(TEST_SOURCES
     src/tests_main.cpp
     src/test_ascii_converter.cpp
     src/test_video_source.cpp
+    src/test_stream_controller.cpp
     ../src/ascii_converter.cpp
     ../src/video_source.cpp
     ../src/logger.cpp
+    ../src/stream_controller.cpp
+    ../src/websocket_session.cpp
 )
 
 # Создание тестовой цели

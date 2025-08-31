@@ -88,24 +88,12 @@ elseif(UNIX)
 endif()
 
 # Копирование веб-ресурсов
-if(WIN32)
-    file(GLOB WEB_FILES "${CMAKE_CURRENT_SOURCE_DIR}/web/*")
-    add_custom_command(TARGET server POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E make_directory 
-            "${CMAKE_CURRENT_BINARY_DIR}/web"
-        COMMAND ${CMAKE_COMMAND} -E copy
-            ${WEB_FILES}
-            "${CMAKE_CURRENT_BINARY_DIR}/web"
-        COMMENT "Copying web resources"
-    )
-else()
-    add_custom_command(TARGET server POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_directory
-            "${CMAKE_CURRENT_SOURCE_DIR}/web"
-            "${CMAKE_CURRENT_BINARY_DIR}/web"
-        COMMENT "Copying web resources"
-    )
-endif()
+add_custom_command(TARGET server POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        "${CMAKE_CURRENT_SOURCE_DIR}/web"
+        "${CMAKE_CURRENT_BINARY_DIR}/web"
+    COMMENT "Copying web resources"
+)
 
 # Включение тестов
 option(BUILD_TESTS "Build tests" OFF)

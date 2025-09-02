@@ -4,6 +4,7 @@
 #include "video_source_interface.hpp"
 
 #include <boost/asio.hpp>
+#include <boost/asio/ssl.hpp>
 #include <memory>
 #include <string>
 
@@ -17,6 +18,7 @@ class Server : public std::enable_shared_from_this<Server>
 public:
         Server(
             net::io_context& ioc,
+            net::ssl::context&& ctx,
             tcp::endpoint endpoint,
             std::string doc_root,
             std::shared_ptr<IVideoSource> video_source,
@@ -27,11 +29,13 @@ public:
     tcp::acceptor& acceptor() { return acceptor_; }
     std::string api_key() const { return api_key_; }
     std::shared_ptr<StreamController> stream_controller() { return stream_controller_; }
+    net::ssl::context& ssl_context() { return ssl_ctx_; }
     
 private:
     void do_accept();
     
     net::io_context& ioc_;
+    net::ssl::context ssl_ctx_;
     tcp::acceptor acceptor_;
     std::string doc_root_;
     std::string api_key_;

@@ -28,6 +28,7 @@ int main()
             net::ip::make_address(address), port), doc_root, video_source, ascii_converter);
         
         logger->info("Server listening on {}:{}", address, port);
+        logger->info("SSL/TLS enabled - using HTTPS/WSS protocol");
         ioc.run();
     } 
     catch (const std::exception& e) 

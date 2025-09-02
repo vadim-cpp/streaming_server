@@ -45,6 +45,9 @@ find_package(spdlog REQUIRED)
 # Поиск curl
 find_package(CURL REQUIRED)
 
+# Поиск OpenSSL
+find_package(OpenSSL REQUIRED)
+
 # Список исходных файлов для сервера
 set(SERVER_SOURCES
     src/main.cpp
@@ -66,6 +69,7 @@ add_executable(server ${SERVER_SOURCES})
 target_include_directories(server PRIVATE 
     include
     ${OpenCV_INCLUDE_DIRS}
+    ${OPENSSL_INCLUDE_DIR}
 )
 
 # Линковка с библиотеками
@@ -76,6 +80,8 @@ target_link_libraries(server PRIVATE
     nlohmann_json::nlohmann_json
     spdlog::spdlog
     CURL::libcurl
+    OpenSSL::SSL
+    OpenSSL::Crypto
 )
 
 # Платформозависимые настройки линковки

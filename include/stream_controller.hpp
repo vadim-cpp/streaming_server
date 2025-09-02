@@ -33,6 +33,7 @@ public:
     
     void add_viewer(std::shared_ptr<WebSocketSession> viewer);
     net::awaitable<void> remove_viewer(std::shared_ptr<WebSocketSession> viewer);
+    net::awaitable<void> remove_viewer_by_id(uint64_t session_id);
     
     std::string get_status() const;
 

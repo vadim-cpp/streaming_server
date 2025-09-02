@@ -24,6 +24,8 @@ public:
     void send_frame(const std::string& frame);
     void close();
 
+    uint64_t session_id() const { return session_id_; }
+
 private:
     net::awaitable<void> do_run(http::request<http::string_body> req);
     net::awaitable<void> do_read();
@@ -33,6 +35,7 @@ private:
     size_t get_queue_size() const { return write_queue_.size(); }
     bool is_authenticated() const { return is_authenticated_; }
     bool is_controller() const { return is_controller_; }
+    uint64_t generate_session_id();
     
     websocket::stream<beast::tcp_stream> ws_;
     std::shared_ptr<StreamController> controller_;
@@ -42,6 +45,7 @@ private:
     bool is_writing_ = false;
     bool is_authenticated_ = false;
     bool is_controller_ = false;
+    uint64_t session_id_;
 
     static constexpr size_t MAX_QUEUE_SIZE = 10;
 };

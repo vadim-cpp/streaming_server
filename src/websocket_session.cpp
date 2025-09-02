@@ -9,7 +9,8 @@ WebSocketSession::WebSocketSession(beast::tcp_stream stream,
                                    std::shared_ptr<Server> server)
     : ws_(std::move(stream)), 
       controller_(controller), 
-      server_(server) 
+      server_(server),
+      session_id_(generate_session_id())
 {}
 
 WebSocketSession::~WebSocketSession() 
@@ -25,13 +26,19 @@ WebSocketSession::~WebSocketSession()
     else if (is_authenticated_) 
     {
         net::co_spawn(ws_.get_executor(),
-            [controller = controller_, self = shared_from_this()] { 
-                return controller->remove_viewer(self); 
+            [controller = controller_, session_id = session_id_] { 
+                return controller->remove_viewer_by_id(session_id); 
             },
             net::detached);
     }
     
     logger->debug("WebSocket session destroyed");
+}
+
+uint64_t WebSocketSession::generate_session_id() 
+{
+    static std::atomic<uint64_t> next_id{1};
+    return next_id++;
 }
 
 void WebSocketSession::run(http::request<http::string_body> req) 

@@ -111,6 +111,21 @@ net::awaitable<void> StreamController::remove_viewer(std::shared_ptr<WebSocketSe
         viewers_.end());
 }
 
+net::awaitable<void> StreamController::remove_viewer_by_id(uint64_t session_id) 
+{
+    co_await net::dispatch(strand_, net::use_awaitable);
+    
+    viewers_.erase(
+        std::remove_if(viewers_.begin(), viewers_.end(),
+            [session_id](const std::weak_ptr<WebSocketSession>& wp) {
+                if (auto viewer = wp.lock()) {
+                    return viewer->session_id() == session_id;
+                }
+                return true;
+            }),
+        viewers_.end());
+}
+
 net::awaitable<void> StreamController::capture_loop() 
 {
     auto logger = Logger::get();

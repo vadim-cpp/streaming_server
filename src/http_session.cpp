@@ -3,6 +3,7 @@
 #include "server.hpp"
 #include "video_source.hpp"
 #include "logger.hpp"
+#include "network_utils.hpp"
 
 #include <nlohmann/json.hpp>
 #include <fstream>
@@ -60,6 +61,18 @@ std::string HttpSession::get_mime_type(const std::string& path) const
     if (path.size() > 4 && path.compare(path.size() - 4, 4, ".css") == 0)
         return "text/css";
 
+    if (path.size() > 4 && path.compare(path.size() - 4, 4, ".png") == 0)
+        return "image/png";
+
+    if (path.size() > 4 && path.compare(path.size() - 4, 4, ".jpg") == 0)
+        return "image/jpeg";
+
+    if (path.size() > 5 && path.compare(path.size() - 5, 5, ".jpeg") == 0)
+        return "image/jpeg";
+
+    if (path.size() > 4 && path.compare(path.size() - 4, 4, ".ico") == 0)
+        return "image/x-icon";
+
     return "application/octet-stream";
 }
 
@@ -67,6 +80,24 @@ void HttpSession::handle_request()
 {
     auto logger = Logger::get();
     logger->debug("HTTP request: {}", request_.target());
+
+    http::response<http::string_body> res;
+    
+    // Устанавливаем CORS заголовки для всех ответов
+    res.set(http::field::access_control_allow_origin, "*");
+    res.set(http::field::access_control_allow_methods, "GET, POST, OPTIONS");
+    res.set(http::field::access_control_allow_headers, "Content-Type, Authorization");
+    res.set(http::field::access_control_max_age, "86400");
+
+    // Обработка предварительного OPTIONS запроса
+    if (request_.method() == http::verb::options) 
+    {
+        logger->debug("Handling OPTIONS request for CORS");
+        res.result(http::status::ok);
+        res.content_length(0);
+        http::write(stream_, res);
+        return;
+    }
 
     std::string path = doc_root_;
     path.append(request_.target().data(), request_.target().size());
@@ -85,7 +116,6 @@ void HttpSession::handle_request()
             });
         }
         
-        http::response<http::string_body> res;
         res.result(http::status::ok);
         res.set(http::field::content_type, "application/json");
         res.body() = j.dump();
@@ -97,13 +127,10 @@ void HttpSession::handle_request()
 
     if (request_.target() == "/api") 
     {
-        auto logger = Logger::get();
         logger->debug("Handling /api request");
         
-        http::response<http::string_body> res;
         res.result(http::status::ok);
         res.set(http::field::content_type, "application/json");
-        res.set(http::field::access_control_allow_origin, "*");
         
         nlohmann::json j;
         j["api_key"] = server_->api_key();
@@ -112,7 +139,10 @@ void HttpSession::handle_request()
         std::string address = endpoint.address().to_string();
         unsigned short port = endpoint.port();
         
-        if (address == "0.0.0.0") address = "localhost";
+        if (address == "0.0.0.0") 
+        {
+            address = get_local_ip();
+        }
         
         j["endpoint"] = "ws://" + address + ":" + std::to_string(port) + "/stream";
         
@@ -128,7 +158,6 @@ void HttpSession::handle_request()
         path += "index.html";
     }
     
-    http::response<http::string_body> res;
     logger->debug("Opening file: {}", path);
     std::ifstream file(path, std::ios::binary);
     

@@ -42,6 +42,9 @@ find_package(nlohmann_json REQUIRED)
 # Поиск spdlog
 find_package(spdlog REQUIRED)
 
+# Поиск curl
+find_package(CURL REQUIRED)
+
 # Список исходных файлов для сервера
 set(SERVER_SOURCES
     src/main.cpp
@@ -53,6 +56,7 @@ set(SERVER_SOURCES
     src/logger.cpp
     src/api_key_manager.cpp
     src/stream_controller.cpp
+    src/network_utils.cpp 
 )
 
 # Создание исполняемого файла для сервера
@@ -71,6 +75,7 @@ target_link_libraries(server PRIVATE
     ${OpenCV_LIBS}
     nlohmann_json::nlohmann_json
     spdlog::spdlog
+    CURL::libcurl
 )
 
 # Платформозависимые настройки линковки
@@ -82,6 +87,8 @@ if(WIN32)
         ole32
         setupapi
         winmm
+        iphlpapi
+        crypt32
     )
 elseif(UNIX)
     target_link_libraries(server PRIVATE pthread)

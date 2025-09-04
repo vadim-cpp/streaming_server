@@ -2,6 +2,7 @@
 #include "video_source.hpp"
 #include "ascii_converter.hpp"
 #include "logger.hpp"
+#include "network_utils.hpp"
 
 #include <iostream>
 
@@ -15,7 +16,7 @@ int main()
         logger->info("Starting ASCII streamer server");
 
         // Конфигурация сервера
-        const std::string address = "0.0.0.0";
+        const std::string address = get_local_ip();
         const unsigned short port = 8080;
         const std::string doc_root = "../web";
 

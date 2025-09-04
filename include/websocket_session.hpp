@@ -6,18 +6,24 @@
 #include <deque>
 #include <boost/beast.hpp>
 #include <boost/asio.hpp>
+#include <boost/beast/ssl.hpp>
 
 namespace beast = boost::beast;
 namespace http = beast::http;
 namespace websocket = beast::websocket;
 namespace net = boost::asio;
+using tcp = net::ip::tcp;
 
 class Server;
 
 class WebSocketSession : public std::enable_shared_from_this<WebSocketSession> 
 {
 public:
-    WebSocketSession(beast::tcp_stream stream, std::shared_ptr<StreamController> controller, std::shared_ptr<Server> server);
+    WebSocketSession(
+        net::ssl::stream<tcp::socket> stream,
+        std::shared_ptr<StreamController> controller, 
+        std::shared_ptr<Server> server
+    );
     ~WebSocketSession();
     
     void run(http::request<http::string_body> req);
@@ -37,7 +43,7 @@ private:
     bool is_controller() const { return is_controller_; }
     uint64_t generate_session_id();
     
-    websocket::stream<beast::tcp_stream> ws_;
+    websocket::stream<net::ssl::stream<tcp::socket>> ws_;
     std::shared_ptr<StreamController> controller_;
     std::shared_ptr<Server> server_;
     beast::flat_buffer buffer_;

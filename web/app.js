@@ -89,7 +89,7 @@ class AsciiStreamer
             this.api_key = await this.getApiKey();
         }
         
-        this.ws = new WebSocket(`ws://${window.location.host}/stream`);
+        this.ws = new WebSocket(`wss://${window.location.host}/stream`);
         
         this.ws.onopen = () => {
             this.ws.send(JSON.stringify({

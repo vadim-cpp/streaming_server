@@ -59,11 +59,14 @@ void Server::do_accept()
             {
                 logger->info("New connection from: {}", 
                     socket.remote_endpoint().address().to_string());
+                
+                // Создаем HTTP сессию с socket и SSL контекстом
                 std::make_shared<HttpSession>(
                     std::move(socket), 
+                    self->ssl_ctx_,
                     self,
                     self->doc_root_)->run();
-            } 
+            }
             else 
             {
                 logger->error("Accept error: {}", ec.message());

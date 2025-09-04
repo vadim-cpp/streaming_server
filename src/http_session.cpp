@@ -9,13 +9,30 @@
 #include <fstream>
 #include <sstream>
 
-HttpSession::HttpSession(tcp::socket socket, std::shared_ptr<Server> srv, std::string doc_root)
-    : stream_(std::move(socket)), server_(srv), doc_root_(std::move(doc_root)) {}
+HttpSession::HttpSession(
+    tcp::socket socket,
+    net::ssl::context& ssl_ctx,
+    std::shared_ptr<Server> srv, 
+    std::string doc_root
+)
+    : stream_(std::move(socket), ssl_ctx),
+    server_(srv), 
+    doc_root_(std::move(doc_root)) 
+{}
 
 void HttpSession::run() 
 {
-    net::dispatch(stream_.get_executor(),
-        [self = shared_from_this()] {
+    auto self = shared_from_this();
+    stream_.async_handshake(
+        boost::asio::ssl::stream_base::server,
+        [self](boost::system::error_code ec) {
+            if(ec) 
+            {
+                auto logger = Logger::get();
+                logger->error("SSL handshake failed: {} (category: {})", 
+                                 ec.message(), ec.category().name());
+                return;
+            }
             self->do_read();
         });
 }
@@ -32,11 +49,12 @@ void HttpSession::do_read()
                 logger->warn("HTTP read error: {}", ec.message());
                 return;
             }
-            
+
             if(beast::websocket::is_upgrade(self->request_)) 
             {
                 logger->debug("WebSocket upgrade requested");
                 
+                // Создаем WebSocket сессию с SSL потоком
                 auto ws_session = std::make_shared<WebSocketSession>(
                     std::move(self->stream_),
                     self->server_->stream_controller(),
@@ -144,7 +162,7 @@ void HttpSession::handle_request()
             address = get_local_ip();
         }
         
-        j["endpoint"] = "ws://" + address + ":" + std::to_string(port) + "/stream";
+        j["endpoint"] = "wss://" + address + ":" + std::to_string(port) + "/stream";
         
         res.body() = j.dump();
         res.prepare_payload();

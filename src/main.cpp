@@ -4,7 +4,6 @@
 #include "logger.hpp"
 #include "network_utils.hpp"
 
-#include <iostream>
 
 int main() 
 {
@@ -30,6 +29,7 @@ int main()
         
         logger->info("Server listening on {}:{}", address, port);
         logger->info("SSL/TLS enabled - using HTTPS/WSS protocol");
+        logger->info("Go to the page: https://{}:{}", address, port);
         ioc.run();
     } 
     catch (const std::exception& e) 

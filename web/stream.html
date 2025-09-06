@@ -36,7 +36,7 @@
         <div class="connection-panel">
             <div class="form-group">
                 <label for="apiEndpoint">WebSocket Endpoint:</label>
-                <input type="text" id="apiEndpoint" placeholder="ws://ip:port/stream">
+                <input type="text" id="apiEndpoint" placeholder="wss://ip:port/stream">
             </div>
             <div class="form-group">
                 <label for="apiKey">API Key:</label>
@@ -51,14 +51,49 @@
     <script>
         class RemoteStreamViewer 
         {
-            constructor() {
+            constructor() 
+            {
                 this.output = document.getElementById('asciiOutput');
                 this.ws = null;
                 this.isConnected = false;
                 
+                const urlParams = new URLSearchParams(window.location.search);
+                const token = urlParams.get('token');
+                
+                if (token) 
+                {
+                    this.connectWithToken(token);
+                }
+                
                 document.getElementById('connectBtn').addEventListener('click', () => {
                     this.connect();
                 });
+            }
+
+            connectWithToken(token) 
+            {
+                this.output.textContent = 'Validating invitation...';
+                
+                fetch('/validate_token?token=' + encodeURIComponent(token))
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.valid) 
+                        {
+                            document.getElementById('apiEndpoint').value = data.endpoint;
+                            document.getElementById('apiKey').value = data.api_key;
+                            this.connect();
+                        } 
+                        else 
+                        {
+                            this.output.textContent = 'Invalid or expired invitation link';
+                            alert('This invitation link is invalid or has expired.');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Token validation error:', error);
+                        this.output.textContent = 'Error validating invitation';
+                        alert('Error validating invitation. Please check your connection.');
+                    });
             }
             
             connect() 
@@ -92,14 +127,21 @@
                 };
                 
                 this.ws.onmessage = (event) => {
-                    if (event.data === "AUTH_VIEWER_SUCCESS") {
+                    if (event.data === "AUTH_VIEWER_SUCCESS") 
+                    {
                         this.output.textContent = 'Authenticated! Waiting for stream...';
                         this.isConnected = true;
-                    } else if (event.data === "STREAM_ACTIVE") {
+                    } 
+                    else if (event.data === "STREAM_ACTIVE") 
+                    {
                         this.output.textContent = 'Stream is active. Receiving data...';
-                    } else if (event.data === "STREAM_INACTIVE") {
+                    } 
+                    else if (event.data === "STREAM_INACTIVE") 
+                    {
                         this.output.textContent = 'Stream is inactive. Waiting...';
-                    } else {
+                    } 
+                    else 
+                    {
                         this.output.textContent = event.data;
                     }
                 };

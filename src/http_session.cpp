@@ -4,6 +4,7 @@
 #include "video_source.hpp"
 #include "logger.hpp"
 #include "network_utils.hpp"
+#include "api_key_manager.hpp"
 
 #include <nlohmann/json.hpp>
 #include <fstream>
@@ -168,6 +169,193 @@ void HttpSession::handle_request()
         res.prepare_payload();
         http::write(stream_, res);
         return;
+    }
+
+    if (request_.target() == "/generate_invite") 
+    {
+        nlohmann::json j;
+        
+        std::string token = APIKeyManager::generate_invite_token(server_->api_key(), 30);
+        
+        // Пробуем использовать туннель, если доступен
+        std::string tunnel_url = server_->cloud_tunnel_url();
+        std::string address;
+        unsigned short port;
+        
+        if (!tunnel_url.empty()) 
+        {
+            // Используем URL туннеля
+            address = tunnel_url;
+            // Убираем протокол для использования в WSS
+            size_t pos = address.find("://");
+            if (pos != std::string::npos) 
+            {
+                address = address.substr(pos + 3);
+            }
+            // Для туннеля порт всегда стандартный для HTTPS
+            port = 443;
+        } 
+        else 
+        {
+            // Используем прямое подключение
+            auto endpoint = server_->acceptor().local_endpoint();
+            address = endpoint.address().to_string();
+            port = endpoint.port();
+            
+            if (address == "0.0.0.0") 
+            {
+                address = get_local_ip();
+            }
+            
+            std::string external_ip = get_external_ip();
+            if (!external_ip.empty()) 
+            {
+                address = external_ip;
+            }
+        }
+        
+        j["invite_url"] = "https://" + address + ":" + std::to_string(port) + "/stream?token=" + token;
+        j["expires_in"] = 30;
+        j["connection_type"] = !tunnel_url.empty() ? "tunnel" : "direct";
+        
+        res.result(http::status::ok);
+        res.set(http::field::content_type, "application/json");
+        res.body() = j.dump();
+        
+        res.prepare_payload();
+        http::write(stream_, res);
+        return;
+    }
+
+    if (request_.target().starts_with("/validate_token")) 
+    {
+        std::string target_str = request_.target();
+        size_t pos = target_str.find('?');
+        if (pos == std::string::npos) 
+        {
+            res.result(http::status::bad_request);
+            res.body() = "Missing token parameter";
+            res.prepare_payload();
+            http::write(stream_, res);
+            return;
+        }
+        
+        std::string query = target_str.substr(pos + 1);
+        pos = query.find('=');
+        if (pos == std::string::npos || query.substr(0, pos) != "token") 
+        {
+            res.result(http::status::bad_request);
+            res.body() = "Invalid parameter";
+            res.prepare_payload();
+            http::write(stream_, res);
+            return;
+        }
+        
+        std::string token = query.substr(pos + 1);
+        std::string api_key;
+        
+        nlohmann::json j;
+        if (APIKeyManager::validate_invite_token(token, api_key)) 
+        {
+            j["valid"] = true;
+            j["api_key"] = api_key;
+            
+            auto endpoint = server_->acceptor().local_endpoint();
+            std::string address = endpoint.address().to_string();
+            unsigned short port = endpoint.port();
+            
+            if (address == "0.0.0.0") 
+            {
+                address = get_local_ip();
+            }
+            
+            std::string external_ip = get_external_ip();
+            if (!external_ip.empty()) 
+            {
+                address = external_ip;
+            }
+            
+            j["endpoint"] = "wss://" + address + ":" + std::to_string(port) + "/stream";
+        } 
+        else 
+        {
+            j["valid"] = false;
+        }
+        
+        res.result(http::status::ok);
+        res.set(http::field::content_type, "application/json");
+        res.body() = j.dump();
+        
+        res.prepare_payload();
+        http::write(stream_, res);
+        return;
+    }
+
+    if (request_.target() == "/tunnel_status") 
+    {
+        nlohmann::json j;
+        
+        std::string tunnel_url = server_->cloud_tunnel_url();
+        j["available"] = !tunnel_url.empty();
+        j["url"] = tunnel_url;
+        
+        res.result(http::status::ok);
+        res.set(http::field::content_type, "application/json");
+        res.body() = j.dump();
+        
+        res.prepare_payload();
+        http::write(stream_, res);
+        return;
+    }
+
+    if (request_.target() == "/test_tunnel") 
+    {
+        nlohmann::json j;
+        
+        std::string tunnel_url = server_->cloud_tunnel_url();
+        if (!tunnel_url.empty()) 
+        {
+            // Проверяем доступность туннеля
+            if (is_port_open(tunnel_url, 443)) 
+            {
+                j["success"] = true;
+                j["message"] = "Tunnel is accessible";
+            } 
+            else 
+            {
+                j["success"] = false;
+                j["message"] = "Tunnel is not accessible";
+            }
+        } 
+        else 
+        {
+            j["success"] = false;
+            j["message"] = "No tunnel available";
+        }
+        
+        res.result(http::status::ok);
+        res.set(http::field::content_type, "application/json");
+        res.body() = j.dump();
+        
+        res.prepare_payload();
+        http::write(stream_, res);
+        return;
+    }
+
+    if (request_.target().starts_with("/stream")) 
+    {
+        path = doc_root_ + "/stream.html";
+        
+        // Проверяем наличие токена в query string
+        std::string target_str = request_.target();
+        size_t pos = target_str.find('?');
+        if (pos != std::string::npos) {
+            std::string query = target_str.substr(pos + 1);
+            if (query.find("token=") != std::string::npos) 
+            {
+                // Токен присутствует, продолжаем обработку
+            }
+        }
     }
     
     if (path.back() == '/') 

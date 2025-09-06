@@ -48,6 +48,9 @@ find_package(CURL REQUIRED)
 # Поиск OpenSSL
 find_package(OpenSSL REQUIRED)
 
+# Поиск CURL
+find_package(CURL REQUIRED)
+
 # Список исходных файлов для сервера
 set(SERVER_SOURCES
     src/main.cpp
@@ -60,6 +63,7 @@ set(SERVER_SOURCES
     src/api_key_manager.cpp
     src/stream_controller.cpp
     src/network_utils.cpp 
+    src/cloudflare_tunnel.cpp
 )
 
 # Создание исполняемого файла для сервера

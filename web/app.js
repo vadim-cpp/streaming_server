@@ -149,7 +149,8 @@ class AsciiStreamer
             
             // Ждем подтверждения от сервера перед закрытием
             setTimeout(() => {
-                if (this.ws) {
+                if (this.ws) 
+                {
                     this.ws.close();
                     this.ws = null;
                 }
@@ -191,3 +192,80 @@ class AsciiStreamer
 }
 
 window.addEventListener('load', () => new AsciiStreamer());
+
+document.getElementById('generateInviteBtn').addEventListener('click', generateInvite);
+
+function generateInvite() 
+{
+    fetch('/generate_invite')
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('inviteLink').value = data.invite_url;
+            document.getElementById('inviteOutput').style.display = 'block';
+        })
+        .catch(error => {
+            console.error('Error generating invite:', error);
+            alert('Failed to generate invitation');
+        });
+}
+
+function copyInviteLink() 
+{
+    const linkInput = document.getElementById('inviteLink');
+    linkInput.select();
+    document.execCommand('copy');
+    alert('Invitation link copied to clipboard!');
+}
+
+document.addEventListener('DOMContentLoaded', checkTunnelStatus);
+
+async function checkTunnelStatus() 
+{
+    try 
+    {
+        const response = await fetch('/tunnel_status');
+        const data = await response.json();
+        
+        document.getElementById('tunnelStatusText').textContent = 
+            data.available ? 'Active' : 'Not available';
+            
+        if (data.available) 
+        {
+            document.getElementById('tunnelUrl').textContent = data.url;
+            document.getElementById('tunnelUrl').style.color = 'green';
+        } 
+        else 
+        {
+            document.getElementById('tunnelUrl').textContent = 'Direct connection only';
+            document.getElementById('tunnelUrl').style.color = 'orange';
+        }
+    } 
+    catch (error) 
+    {
+        console.error('Failed to check tunnel status:', error);
+    }
+}
+
+document.getElementById('testTunnelBtn').addEventListener('click', testTunnel);
+
+async function testTunnel() 
+{
+    try 
+    {
+        const response = await fetch('/test_tunnel');
+        const data = await response.json();
+        
+        if (data.success) 
+        {
+            alert('Tunnel test passed! Your server is accessible from the internet.');
+        } 
+        else 
+        {
+            alert('Tunnel test failed: ' + data.message);
+        }
+    } 
+    catch (error) 
+    {
+        alert('Tunnel test failed: ' + error.message);
+    }
+}

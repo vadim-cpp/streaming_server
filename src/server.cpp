@@ -3,6 +3,7 @@
 #include "stream_controller.hpp"
 #include "logger.hpp"
 #include "api_key_manager.hpp"
+#include "cloudflare_tunnel.hpp"
 
 Server::Server(
     net::io_context& ioc,
@@ -10,7 +11,8 @@ Server::Server(
     tcp::endpoint endpoint,
     std::string doc_root,
     std::shared_ptr<IVideoSource> video_source,
-    std::shared_ptr<IAsciiConverter> ascii_converter
+    std::shared_ptr<IAsciiConverter> ascii_converter,
+    bool enable_cloud_tunnel 
 )
     : ioc_(ioc), acceptor_(ioc), doc_root_(std::move(doc_root)),
       ssl_ctx_(std::move(ctx)), video_source_(std::move(video_source)),
@@ -42,6 +44,52 @@ Server::Server(
 
     auto logger = Logger::get();
     logger->info("Server API key: {}", api_key_);
+
+    // Автоматически настраиваем туннель при запуске
+    if (enable_cloud_tunnel) 
+    {
+        setup_cloud_tunnel();
+    }
+}
+
+Server::~Server() 
+{
+    auto logger = Logger::get();
+    logger->debug("Server destructor called");
+    
+    // Очищаем облачные туннели при завершении работы
+    if (!cloud_tunnel_url_.empty()) 
+    {
+        CloudflareTunnel::cleanup();
+    }
+}
+
+void Server::setup_cloud_tunnel() 
+{
+    auto logger = Logger::get();
+    auto endpoint = acceptor_.local_endpoint();
+    
+    // Пробуем Cloudflare Tunnel
+    std::string tunnel_url = CloudflareTunnel::setup_tunnel(endpoint.port());
+    
+    if (!tunnel_url.empty()) 
+    {
+        logger->info("Cloudflare tunnel available: {}", tunnel_url);
+        cloud_tunnel_url_ = tunnel_url;
+        return;
+    }
+    
+    // Если Cloudflare не сработал, пробуем Ngrok
+    tunnel_url = CloudflareTunnel::setup_ngrok_tunnel(endpoint.port());
+    
+    if (!tunnel_url.empty()) 
+    {
+        logger->info("Ngrok tunnel available: {}", tunnel_url);
+        cloud_tunnel_url_ = tunnel_url;
+        return;
+    }
+    
+    logger->warn("No cloud tunnel available. Direct connection only.");
 }
 
 void Server::run() 
@@ -80,7 +128,8 @@ std::shared_ptr<Server> make_server(
     tcp::endpoint endpoint, 
     std::string doc_root,
     std::shared_ptr<IVideoSource> video_source,
-    std::shared_ptr<IAsciiConverter> ascii_converter) 
+    std::shared_ptr<IAsciiConverter> ascii_converter,
+    bool enable_cloud_tunnel) 
 {
     net::ssl::context ctx{net::ssl::context::tlsv12};
 
@@ -96,7 +145,7 @@ std::shared_ptr<Server> make_server(
         throw;
     }
 
-    auto srv = std::make_shared<Server>(ioc, std::move(ctx), endpoint, doc_root, video_source, ascii_converter);
+    auto srv = std::make_shared<Server>(ioc, std::move(ctx), endpoint, doc_root, video_source, ascii_converter, enable_cloud_tunnel);
     srv->run();
     return srv;
 }

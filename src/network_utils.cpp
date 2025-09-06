@@ -166,3 +166,27 @@ bool is_port_open(const std::string& ip, int port)
     return result;
 #endif
 }
+
+std::string get_external_ip() 
+{
+    CURL *curl;
+    CURLcode res;
+    std::string readBuffer;
+
+    curl = curl_easy_init();
+    if(curl) 
+    {
+        curl_easy_setopt(curl, CURLOPT_URL, "https://api.ipify.org");
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
+        curl_easy_setopt(curl, CURLOPT_TIMEOUT, 5);
+        res = curl_easy_perform(curl);
+        curl_easy_cleanup(curl);
+
+        if (res == CURLE_OK) 
+        {
+            return readBuffer;
+        }
+    }
+    return "";
+}

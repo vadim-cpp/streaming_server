@@ -1,5 +1,8 @@
 /build
 /tests/build_tests
 /.vscode
+/.idea
 /logs
 *.log
+*.crt
+*.key

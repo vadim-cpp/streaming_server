@@ -4,7 +4,7 @@
 
 #include <nlohmann/json.hpp>
 
-WebSocketSession::WebSocketSession(beast::tcp_stream stream, 
+WebSocketSession::WebSocketSession(net::ssl::stream<tcp::socket> stream,
                                    std::shared_ptr<StreamController> controller, 
                                    std::shared_ptr<Server> server)
     : ws_(std::move(stream)), 
@@ -152,7 +152,7 @@ net::awaitable<void> WebSocketSession::do_run(http::request<http::string_body> r
             }));
         
         co_await ws_.async_accept(req, net::use_awaitable);
-        logger->info("WebSocket connection established");
+        logger->info("Secure WebSocket connection established");
         
         while (ws_.is_open()) 
         {

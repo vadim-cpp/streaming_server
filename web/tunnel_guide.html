@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Инструкция по установке туннелей - ASCII Streamer</title>
+    <style>
+        :root {
+            --primary-color: #4CAF50;
+            --dark-bg: #1a1a1a;
+            --light-text: #e0e0e0;
+            --card-bg: #252525;
+            --accent-color: #45a049;
+        }
+        
+        body {
+            font-family: 'Courier New', monospace;
+            background-color: var(--dark-bg);
+            color: var(--light-text);
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background-color: var(--card-bg);
+            border-radius: 5px;
+        }
+        
+        h1 {
+            color: var(--primary-color);
+            margin-bottom: 10px;
+        }
+        
+        h2 {
+            color: var(--primary-color);
+            border-bottom: 1px solid var(--primary-color);
+            padding-bottom: 10px;
+            margin-top: 30px;
+        }
+        
+        h3 {
+            color: var(--accent-color);
+        }
+        
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 5px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .steps {
+            counter-reset: step-counter;
+        }
+        
+        .step {
+            margin-bottom: 20px;
+            padding-left: 60px;
+            position: relative;
+        }
+        
+        .step:before {
+            counter-increment: step-counter;
+            content: counter(step-counter);
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 40px;
+            height: 40px;
+            background-color: var(--primary-color);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+        
+        .code-block {
+            background-color: #000;
+            color: #00FF00;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-family: monospace;
+            margin: 15px 0;
+            line-height: 1.4;
+        }
+        
+        .note {
+            background-color: rgba(76, 175, 80, 0.1);
+            border-left: 4px solid var(--primary-color);
+            padding: 10px 15px;
+            margin: 15px 0;
+        }
+        
+        .warning {
+            background-color: rgba(255, 193, 7, 0.1);
+            border-left: 4px solid #ffc107;
+            padding: 10px 15px;
+            margin: 15px 0;
+        }
+        
+        .tabs {
+            display: flex;
+            margin-bottom: 20px;
+        }
+        
+        .tab {
+            padding: 10px 20px;
+            background-color: var(--card-bg);
+            cursor: pointer;
+            border-radius: 5px 5px 0 0;
+            margin-right: 5px;
+        }
+        
+        .tab.active {
+            background-color: var(--primary-color);
+            color: white;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .platform-selector {
+            display: flex;
+            margin-bottom: 20px;
+        }
+        
+        .platform {
+            padding: 10px 20px;
+            background-color: var(--card-bg);
+            cursor: pointer;
+            margin-right: 10px;
+            border-radius: 5px;
+        }
+        
+        .platform.active {
+            background-color: var(--primary-color);
+            color: white;
+        }
+        
+        @media (max-width: 768px) {
+            .step {
+                padding-left: 50px;
+            }
+            
+            .step:before {
+                width: 35px;
+                height: 35px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Инструкция по установке и запуску туннелей</h1>
+            <p>Сделайте ваш ASCII Streamer доступным из любой точки мира</p>
+        </header>
+        
+        <div class="card">
+            <h2>Зачем нужны туннели?</h2>
+            <p>Туннели позволяют сделать ваш локальный сервер доступным из интернета без необходимости настройки портов на роутере или получения статического IP-адреса.</p>
+            
+            <div class="tabs">
+                <div class="tab active" onclick="switchTab('cloudflare')">Cloudflare Tunnel</div>
+                <div class="tab" onclick="switchTab('ngrok')">Ngrok</div>
+            </div>
+            
+            <div id="cloudflare" class="tab-content active">
+                <h3>Cloudflare Tunnel</h3>
+                <p>Бесплатное решение от Cloudflare с собственным доменом и SSL-сертификатом.</p>
+                
+                <div class="platform-selector">
+                    <div class="platform active" onclick="switchPlatform('win-cf')">Windows</div>
+                    <div class="platform" onclick="switchPlatform('linux-cf')">Linux</div>
+                </div>
+                
+                <div id="win-cf" class="platform-content">
+                    <div class="steps">
+                        <div class="step">
+                            <h4>Скачайте cloudflared</h4>
+                            <p>Перейдите на страницу загрузки Cloudflare Tunnel:</p>
+                            <a href="https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/install-and-setup/installation/" target="_blank" style="color: #4CAF50;">https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/install-and-setup/installation/</a>
+                            <p>Скачайте версию для Windows.</p>
+                        </div>
+                        
+                        <div class="step">
+                            <h4>Распакуйте архив</h4>
+                            <p>Распакуйте скачанный ZIP-архив и поместите файл cloudflared.exe в удобную папку.</p>
+                        </div>
+                        
+                        <div class="step">
+                            <h4>Добавьте в PATH (опционально)</h4>
+                            <p>Чтобы использовать cloudflared из любой директории, добавьте путь к нему в переменную PATH:</p>
+                            <div class="code-block">
+                                # Откройте "Параметры системы" -> "Переменные среды"<br>
+                                # Найдите переменную PATH в разделе "Системные переменные"<br>
+                                # Добавьте путь к папке с cloudflared.exe
+                            </div>
+                        </div>
+                        
+                        <div class="step">
+                            <h4>Аутентификация</h4>
+                            <p>Выполните в командной строке:</p>
+                            <div class="code-block">cloudflared tunnel login</div>
+                            <p>Это откроет браузер для авторизации вашего аккаунта Cloudflare.</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="linux-cf" class="platform-content" style="display:none">
+                    <div class="steps">
+                        <div class="step">
+                            <h4>Установка на Linux</h4>
+                            <p>Для установки на Ubuntu/Debian выполните:</p>
+                            <div class="code-block">
+                                # Скачайте пакет<br>
+                                wget https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb<br><br>
+                                
+                                # Установите<br>
+                                sudo dpkg -i cloudflared-linux-amd64.deb<br><br>
+                                
+                                # Проверьте установку<br>
+                                cloudflared --version
+                            </div>
+                        </div>
+                        
+                        <div class="step">
+                            <h4>Аутентификация</h4>
+                            <p>Выполните в терминале:</p>
+                            <div class="code-block">cloudflared tunnel login</div>
+                            <p>Это откроет браузер для авторизации вашего аккаунта Cloudflare.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="ngrok" class="tab-content" style="display:none">
+                <h3>Ngrok</h3>
+                <p>Простое в использовании решение с бесплатным и платными тарифами.</p>
+                
+                <div class="platform-selector">
+                    <div class="platform active" onclick="switchPlatform('win-ng')">Windows</div>
+                    <div class="platform" onclick="switchPlatform('linux-ng')">Linux</div>
+                </div>
+                
+                <div id="win-ng" class="platform-content">
+                    <div class="steps">
+                        <div class="step">
+                            <h4>Скачайте Ngrok</h4>
+                            <p>Перейдите на официальный сайт:</p>
+                            <a href="https://ngrok.com/download" target="_blank" style="color: #4CAF50;">https://ngrok.com/download</a>
+                            <p>Скачайте версию для Windows.</p>
+                        </div>
+                        
+                        <div class="step">
+                            <h4>Распакуйте архив</h4>
+                            <p>Распакуйте скачанный ZIP-архив и поместите файл ngrok.exe в удобную папку.</p>
+                        </div>
+                        
+                        <div class="step">
+                            <h4>Добавьте в PATH (опционально)</h4>
+                            <p>Чтобы использовать ngrok из любой директории, добавьте путь к нему в переменную PATH:</p>
+                            <div class="code-block">
+                                # Откройте "Параметры системы" -> "Переменные среды"<br>
+                                # Найдите переменную PATH в разделе "Системные переменные"<br>
+                                # Добавьте путь к папке с ngrok.exe
+                            </div>
+                        </div>
+                        
+                        <div class="step">
+                            <h4>Аутентификация</h4>
+                            <p>Зарегистрируйтесь на сайте ngrok и получите токен аутентификации.</p>
+                            <p>Выполните в командной строке:</p>
+                            <div class="code-block">ngrok authtoken YOUR_AUTH_TOKEN</div>
+                            <p>Замените YOUR_AUTH_TOKEN на ваш токен с сайта ngrok.</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="linux-ng" class="platform-content" style="display:none">
+                    <div class="steps">
+                        <div class="step">
+                            <h4>Установка на Linux</h4>
+                            <p>Для установки на Ubuntu/Debian выполните:</p>
+                            <div class="code-block">
+                                # Скачайте ngrok<br>
+                                wget https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-amd64.tgz<br><br>
+                                
+                                # Распакуйте<br>
+                                tar xvf ngrok-v3-stable-linux-amd64.tgz<br><br>
+                                
+                                # Переместите в /usr/local/bin<br>
+                                sudo mv ngrok /usr/local/bin/<br><br>
+                                
+                                # Проверьте установку<br>
+                                ngrok --version
+                            </div>
+                        </div>
+                        
+                        <div class="step">
+                            <h4>Аутентификация</h4>
+                            <p>Зарегистрируйтесь на сайте ngrok и получите токен аутентификации.</p>
+                            <p>Выполните в терминале:</p>
+                            <div class="code-block">ngrok authtoken YOUR_AUTH_TOKEN</div>
+                            <p>Замените YOUR_AUTH_TOKEN на ваш токен с сайта ngrok.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <h2>Запуск туннелей</h2>
+            
+            <div id="cf-launch" class="tab-content active">
+                <h3>Запуск Cloudflare Tunnel</h3>
+                <div class="steps">
+                    <div class="step">
+                        <h4>Создайте туннель</h4>
+                        <p>Выполните команду:</p>
+                        <div class="code-block">cloudflared tunnel create NAME_OF_TUNNEL</div>
+                        <p>Замените NAME_OF_TUNNEL на желаемое имя для вашего туннеля.</p>
+                    </div>
+                    
+                    <div class="step">
+                        <h4>Настройте конфигурацию</h4>
+                        <p>Создайте конфигурационный файл config.yml со следующим содержимым:</p>
+                        <div class="code-block">
+                            tunnel: NAME_OF_TUNNEL<br>
+                            credentials-file: /path/to/credentials/file.json<br>
+                            ingress:<br>
+                            &nbsp;&nbsp;- hostname: your-subdomain.your-domain.com<br>
+                            &nbsp;&nbsp;&nbsp;&nbsp;service: http://localhost:8080<br>
+                            &nbsp;&nbsp;- service: http_status:404
+                        </div>
+                    </div>
+                    
+                    <div class="step">
+                        <h4>Запустите туннель</h4>
+                        <p>Выполните команду:</p>
+                        <div class="code-block">cloudflared tunnel run NAME_OF_TUNNEL</div>
+                    </div>
+                    
+                    <div class="step">
+                        <h4>Настройте DNS</h4>
+                        <p>В панели управления Cloudflare создайте CNAME запись, указывающую на ваш туннель.</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="ngrok-launch" class="tab-content" style="display:none">
+                <h3>Запуск Ngrok</h3>
+                <div class="steps">
+                    <div class="step">
+                        <h4>Запустите туннель</h4>
+                        <p>Выполните команду:</p>
+                        <div class="code-block">ngrok http 8080</div>
+                        <p>Замените 8080 на порт, который использует ваш ASCII Streamer.</p>
+                    </div>
+                    
+                    <div class="step">
+                        <h4>Используйте полученный URL</h4>
+                        <p>После запуска ngrok отобразит публичный URL, который можно использовать для доступа к вашему серверу.</p>
+                    </div>
+                    
+                    <div class="step">
+                        <h4>Для постоянного туннеля</h4>
+                        <p>Если вы хотите использовать постоянный домен, выполните:</p>
+                        <div class="code-block">ngrok http --domain=your-domain.ngrok.io 8080</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <h2>Интеграция с ASCII Streamer</h2>
+            <p>После настройки туннеля, ваш сервер будет доступен по предоставленному URL.</p>
+            
+            <div class="steps">
+                <div class="step">
+                    <h4>Настройка в веб-интерфейсе</h4>
+                    <p>В веб-интерфейсе ASCII Streamer перейдите в раздел "Cloud Tunnel" и введите URL вашего туннеля.</p>
+                </div>
+                
+                <div class="step">
+                    <h4>Генерация приглашений</h4>
+                    <p>Теперь при генерации пригласительных ссылок будет использоваться URL туннеля, а не локальный IP-адрес.</p>
+                </div>
+            </div>
+            
+            <div class="note">
+                <p><strong>Примечание:</strong> Туннели автоматически добавляют SSL-шифрование, поэтому ваше соединение будет безопасным.</p>
+            </div>
+        </div>
+        
+        <div class="card">
+            <h2>Решение проблем</h2>
+            
+            <div class="steps">
+                <div class="step">
+                    <h4>Туннель не запускается</h4>
+                    <p>Убедитесь, что ваш локальный сервер запущен и доступен на указанном порту.</p>
+                </div>
+                
+                <div class="step">
+                    <h4>Ошибки аутентификации</h4>
+                    <p>Проверьте правильность введенного токена аутентификации.</p>
+                </div>
+                
+                <div class="step">
+                    <h4>Домен недоступен</h4>
+                    <p>Убедитесь, что DNS запись настроена правильно и прошло достаточно времени для распространения DNS.</p>
+                </div>
+            </div>
+            
+            <div class="warning">
+                <p><strong>Важно:</strong> Бесплатные туннели могут иметь ограничения по пропускной способности и времени жизни.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function switchTab(tabName) {
+            // Скрыть все вкладки
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.style.display = 'none';
+            });
+            
+            // Показать выбранную вкладку
+            document.getElementById(tabName).style.display = 'block';
+            
+            // Обновить активные табы
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            event.currentTarget.classList.add('active');
+            
+            // Также переключаем контент запуска
+            if (tabName === 'cloudflare') {
+                document.getElementById('cf-launch').style.display = 'block';
+                document.getElementById('ngrok-launch').style.display = 'none';
+            } else {
+                document.getElementById('cf-launch').style.display = 'none';
+                document.getElementById('ngrok-launch').style.display = 'block';
+            }
+        }
+        
+        function switchPlatform(platformId) {
+            // Скрыть все платформы в активной вкладке
+            const activeTab = document.querySelector('.tab.active').id;
+            const platformContents = document.querySelectorAll(`#${activeTab} .platform-content`);
+            platformContents.forEach(content => {
+                content.style.display = 'none';
+            });
+            
+            // Показать выбранную платформу
+            document.getElementById(platformId).style.display = 'block';
+            
+            // Обновить активные платформы
+            const platforms = document.querySelectorAll(`#${activeTab} .platform`);
+            platforms.forEach(platform => {
+                platform.classList.remove('active');
+            });
+            event.currentTarget.classList.add('active');
+        }
+    </script>
+</body>
+</html>

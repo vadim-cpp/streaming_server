@@ -2,6 +2,12 @@
 
 ![alt text](ascii.png)
 
+## Клонирование репозитория
+- git clone https://github.com/vadim-cpp/ascii-streamer-web.git
+
+## Обновление сабмодулей
+- git submodule update --init --recursive
+
 # Инструкция по запуску CMake
 
 ## Описание

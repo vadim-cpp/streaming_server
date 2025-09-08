@@ -110,6 +110,7 @@ add_custom_command(TARGET server POST_BUILD
         "${CMAKE_CURRENT_SOURCE_DIR}/web"
         "${CMAKE_CURRENT_BINARY_DIR}/web"
     COMMENT "Copying web resources"
+    DEPENDS web
 )
 
 # Включение тестов

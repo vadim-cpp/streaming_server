@@ -1,6 +1,6 @@
 Данное ПО представляет собой сервер для потоковой передачи ASCII-графики через WebSocket с веб-интерфейсом
 
-![alt text](ascii.png)
+![alt text](https://downloader.disk.yandex.ru/preview/a6b3780e8e5720875017cd7123e08e512a8468249d05ab0ae62d8fdc42b69596/68bf3944/epJpT5KHLX0dFBhteiHZav06PwdO-kwyQs93nqZjOy2aWPrTLfR5M_9xsw9qeP8vskXiJe4iDdDKxu09WNNeqA%3D%3D?uid=0&filename=ascii.png&disposition=inline&hash=&limit=0&content_type=image%2Fpng&owner_uid=0&tknv=v3&size=2048x2048)
 
 ## Клонирование репозитория
 - git clone https://github.com/vadim-cpp/ascii-streamer-web.git

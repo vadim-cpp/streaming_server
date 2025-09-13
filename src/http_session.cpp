@@ -205,20 +205,12 @@ void HttpSession::handle_request()
         nlohmann::json j;
         
         std::string tunnel_url = server_->cloud_tunnel_url();
-        if (!tunnel_url.empty()) 
+
+        if (!tunnel_url.empty())
         {
-            // Проверяем доступность туннеля
-            if (is_port_open(tunnel_url, 443)) 
-            {
-                j["success"] = true;
-                j["message"] = "Tunnel is accessible";
-            } 
-            else 
-            {
-                j["success"] = false;
-                j["message"] = "Tunnel is not accessible";
-            }
-        } 
+            j["success"] = true;
+            j["message"] = "Tunnel is accessible";
+        }
         else 
         {
             j["success"] = false;

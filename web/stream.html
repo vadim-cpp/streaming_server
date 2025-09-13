@@ -57,43 +57,9 @@
                 this.ws = null;
                 this.isConnected = false;
                 
-                const urlParams = new URLSearchParams(window.location.search);
-                const token = urlParams.get('token');
-                
-                if (token) 
-                {
-                    this.connectWithToken(token);
-                }
-                
                 document.getElementById('connectBtn').addEventListener('click', () => {
                     this.connect();
                 });
-            }
-
-            connectWithToken(token) 
-            {
-                this.output.textContent = 'Validating invitation...';
-                
-                fetch('/validate_token?token=' + encodeURIComponent(token))
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.valid) 
-                        {
-                            document.getElementById('apiEndpoint').value = data.endpoint;
-                            document.getElementById('apiKey').value = data.api_key;
-                            this.connect();
-                        } 
-                        else 
-                        {
-                            this.output.textContent = 'Invalid or expired invitation link';
-                            alert('This invitation link is invalid or has expired.');
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Token validation error:', error);
-                        this.output.textContent = 'Error validating invitation';
-                        alert('Error validating invitation. Please check your connection.');
-                    });
             }
             
             connect() 

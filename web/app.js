@@ -193,30 +193,6 @@ class AsciiStreamer
 
 window.addEventListener('load', () => new AsciiStreamer());
 
-document.getElementById('generateInviteBtn').addEventListener('click', generateInvite);
-
-function generateInvite() 
-{
-    fetch('/generate_invite')
-        .then(response => response.json())
-        .then(data => {
-            document.getElementById('inviteLink').value = data.invite_url;
-            document.getElementById('inviteOutput').style.display = 'block';
-        })
-        .catch(error => {
-            console.error('Error generating invite:', error);
-            alert('Failed to generate invitation');
-        });
-}
-
-function copyInviteLink() 
-{
-    const linkInput = document.getElementById('inviteLink');
-    linkInput.select();
-    document.execCommand('copy');
-    alert('Invitation link copied to clipboard!');
-}
-
 document.addEventListener('DOMContentLoaded', checkTunnelStatus);
 
 async function checkTunnelStatus() 

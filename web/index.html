@@ -29,28 +29,9 @@
             <div id="apiInfo" class="api-info"></div>
             <button id="copyApiBtn" style="display:none; margin-top:10px;">Copy API</button>
         </div>
-        <div class="invite-panel">
-        <h3>Generate Invitation</h3>
-        <button id="generateInviteBtn">Create Invitation Link</button>
-        <div id="inviteOutput" style="display: none; margin-top: 10px;">
-            <p>Share this link with your partner:</p>
-            <input type="text" id="inviteLink" readonly style="width: 100%;">
-            <button onclick="copyInviteLink()">Copy Link</button>
-            <p><small>This link will expire in 30 minutes</small></p>
-        </div>
     </div>
     </div>
     <div class="tunnel-panel">
-        <h3>Cloud Tunnel</h3>
-        <p>Enable cloud tunnel to make your server accessible without port forwarding:</p>
-        
-        <div class="tunnel-options">
-            <label>
-                <input type="checkbox" id="enableTunnel" checked>
-                Enable Cloud Tunnel (recommended)
-            </label>
-        </div>
-        
         <div id="tunnelStatus">
             <p>Status: <span id="tunnelStatusText">Checking...</span></p>
             <p>URL: <span id="tunnelUrl">Not available</span></p>

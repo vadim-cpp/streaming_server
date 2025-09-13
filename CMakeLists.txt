@@ -63,7 +63,6 @@ set(SERVER_SOURCES
     src/api_key_manager.cpp
     src/stream_controller.cpp
     src/network_utils.cpp 
-    src/cloudflare_tunnel.cpp
 )
 
 # Создание исполняемого файла для сервера

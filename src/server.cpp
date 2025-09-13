@@ -3,7 +3,6 @@
 #include "stream_controller.hpp"
 #include "logger.hpp"
 #include "api_key_manager.hpp"
-#include "cloudflare_tunnel.hpp"
 
 Server::Server(
     net::io_context& ioc,
@@ -56,38 +55,12 @@ Server::~Server()
 {
     auto logger = Logger::get();
     logger->debug("Server destructor called");
-    
-    // Очищаем облачные туннели при завершении работы
-    if (!cloud_tunnel_url_.empty()) 
-    {
-        CloudflareTunnel::cleanup();
-    }
 }
 
 void Server::setup_cloud_tunnel() 
 {
     auto logger = Logger::get();
     auto endpoint = acceptor_.local_endpoint();
-    
-    // Пробуем Cloudflare Tunnel
-    std::string tunnel_url = CloudflareTunnel::setup_tunnel(endpoint.port());
-    
-    if (!tunnel_url.empty()) 
-    {
-        logger->info("Cloudflare tunnel available: {}", tunnel_url);
-        cloud_tunnel_url_ = tunnel_url;
-        return;
-    }
-    
-    // Если Cloudflare не сработал, пробуем Ngrok
-    tunnel_url = CloudflareTunnel::setup_ngrok_tunnel(endpoint.port());
-    
-    if (!tunnel_url.empty()) 
-    {
-        logger->info("Ngrok tunnel available: {}", tunnel_url);
-        cloud_tunnel_url_ = tunnel_url;
-        return;
-    }
     
     logger->warn("No cloud tunnel available. Direct connection only.");
 }

@@ -63,6 +63,7 @@ set(SERVER_SOURCES
     src/api_key_manager.cpp
     src/stream_controller.cpp
     src/network_utils.cpp 
+    src/vk_tunnel.cpp
 )
 
 # Создание исполняемого файла для сервера

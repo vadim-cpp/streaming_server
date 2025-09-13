@@ -3,6 +3,7 @@
 #include "stream_controller.hpp"
 #include "logger.hpp"
 #include "api_key_manager.hpp"
+#include "vk_tunnel.hpp"
 
 Server::Server(
     net::io_context& ioc,
@@ -55,6 +56,11 @@ Server::~Server()
 {
     auto logger = Logger::get();
     logger->debug("Server destructor called");
+
+    if (!cloud_tunnel_url_.empty()) 
+    {
+        VKTunnel::cleanup();
+    }
 }
 
 void Server::setup_cloud_tunnel() 
@@ -62,7 +68,17 @@ void Server::setup_cloud_tunnel()
     auto logger = Logger::get();
     auto endpoint = acceptor_.local_endpoint();
     
-    logger->warn("No cloud tunnel available. Direct connection only.");
+    // Используем только VK Tunnel
+    std::string tunnel_url = VKTunnel::setup_tunnel(endpoint.port());
+    
+    if (!tunnel_url.empty()) 
+    {
+        logger->info("VK tunnel available: {}", tunnel_url);
+        cloud_tunnel_url_ = tunnel_url;
+        return;
+    }
+    
+    logger->warn("No VK tunnel available. Direct connection only.");
 }
 
 void Server::run() 

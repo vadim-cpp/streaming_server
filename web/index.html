@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>ASCII Streamer</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" href="images/icon.png" type="image/x-icon">
+</head>
+<body>
+    <div class="container">
+        <h1>Realtime ASCII Stream</h1>
+        <div class="controls">
+            <button id="startBtn">Start Stream</button>
+            <label for="resolution">Resolution:</label>
+            <select id="resolution">
+                <option value="80x60">80x60</option>
+                <option value="120x90" selected>120x90</option>
+                <option value="160x120">160x120</option>
+            </select>
+            <label for="camera">Camera:</label>
+            <select id="camera">
+                <option value="0">Default Camera</option>
+            </select>
+        </div>
+        <pre id="asciiOutput"></pre>
+        
+        <div class="api-panel">
+            <button id="showApiBtn">Show API Info</button>
+            <div id="apiInfo" class="api-info"></div>
+            <button id="copyApiBtn" style="display:none; margin-top:10px;">Copy API</button>
+        </div>
+        <div class="invite-panel">
+        <h3>Generate Invitation</h3>
+        <button id="generateInviteBtn">Create Invitation Link</button>
+        <div id="inviteOutput" style="display: none; margin-top: 10px;">
+            <p>Share this link with your partner:</p>
+            <input type="text" id="inviteLink" readonly style="width: 100%;">
+            <button onclick="copyInviteLink()">Copy Link</button>
+            <p><small>This link will expire in 30 minutes</small></p>
+        </div>
+    </div>
+    </div>
+    <div class="tunnel-panel">
+        <h3>Cloud Tunnel</h3>
+        <p>Enable cloud tunnel to make your server accessible without port forwarding:</p>
+        
+        <div class="tunnel-options">
+            <label>
+                <input type="checkbox" id="enableTunnel" checked>
+                Enable Cloud Tunnel (recommended)
+            </label>
+        </div>
+        
+        <div id="tunnelStatus">
+            <p>Status: <span id="tunnelStatusText">Checking...</span></p>
+            <p>URL: <span id="tunnelUrl">Not available</span></p>
+        </div>
+        
+        <button id="testTunnelBtn">Test Tunnel</button>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>

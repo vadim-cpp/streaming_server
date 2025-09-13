@@ -1,4 +1,0 @@
-[submodule "web"]
-	path = web
-	url = https://github.com/vadim-cpp/ascii-streamer-web.git
-	branch = main

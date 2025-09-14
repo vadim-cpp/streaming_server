@@ -1,10 +1,12 @@
 #include "vk_tunnel.hpp"
 #include "logger.hpp"
+
 #include <curl/curl.h>
 #include <fstream>
 #include <sstream>
 #include <cstdlib>
-#include <iostream>
+#include <thread>
+#include <chrono> 
 
 static size_t WriteCallback(void* contents, size_t size, size_t nmemb, std::string* data) 
 {
@@ -44,20 +46,21 @@ std::string VKTunnel::setup_tunnel(int port)
     
     // Запускаем vk-tunnel в фоновом режиме
     std::string command = "vk-tunnel http " + std::to_string(port) + " --log=stdout > vk_tunnel.log 2>&1 &";
-    int result = system(command.c_str());
+    std::string new_command = "vk-tunnel --http-protocol=https --ws-protocol=wss --port=" + std::to_string(port) + " --timeout=5000 --log=stdout > vk_tunnel.log 2>&1 &";
+    int result = 0;
+    std::thread tunnel_thread([new_command, &result]() {
+            result = system(new_command.c_str());
+        });
+    tunnel_thread.detach();
+
+    // Даем время на запуск
+    std::this_thread::sleep_for(std::chrono::seconds(5));
     
-    if (result != 0) 
+    if (result != 0)
     {
         logger->error("Failed to start vk-tunnel");
         return "";
     }
-    
-    // Даем время на запуск
-    #ifdef _WIN32
-    system("timeout 5 > nul");
-    #else
-    system("sleep 5");
-    #endif
     
     // Пытаемся получить URL из логов
     std::ifstream logfile("vk_tunnel.log");

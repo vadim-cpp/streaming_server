@@ -22,6 +22,52 @@ class AsciiStreamer
             if(this.isStreaming) this.stop();
             else this.start();
         });
+
+        this.recordBtn = document.getElementById('recordBtn');
+        this.isRecording = false;
+        
+        this.recordBtn.addEventListener('click', () => this.toggleRecording());
+    }
+
+    async toggleRecording()
+    {
+        if (this.isRecording) 
+        {
+            this.stopRecording();
+        } 
+        else 
+        {
+            this.startRecording();
+        }
+    }
+    
+    async startRecording()
+    {
+        if (!this.ws || this.ws.readyState !== WebSocket.OPEN) 
+        {
+            alert('Please start the stream first');
+            return;
+        }
+        
+        this.ws.send(JSON.stringify({
+            type: 'record_start'
+        }));
+        
+        this.recordBtn.textContent = 'Stop Recording';
+        this.isRecording = true;
+    }
+    
+    async stopRecording() 
+    {
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) 
+        {
+            this.ws.send(JSON.stringify({
+                type: 'record_stop'
+            }));
+        }
+        
+        this.recordBtn.textContent = 'Start Recording';
+        this.isRecording = false;
     }
 
     async showApiInfo() 
@@ -124,6 +170,20 @@ class AsciiStreamer
             {
                 // Сервер подтвердил остановку стрима
                 this.updateUI(false);
+            } 
+            else if (cleanedMessage === "RECORDING_STARTED") 
+            {
+                alert('Recording started successfully');
+            } 
+            else if (cleanedMessage === "RECORDING_STOPPED") 
+            {
+                alert('Recording stopped successfully');
+            } 
+            else if (cleanedMessage === "RECORDING_ERROR") 
+            {
+                alert('Recording error occurred');
+                this.recordBtn.textContent = 'Start Recording';
+                this.isRecording = false;
             } 
             else 
             {

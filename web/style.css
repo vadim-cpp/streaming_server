@@ -86,3 +86,60 @@ select, input {
     word-break: break-all;
     white-space: pre-wrap;
 }
+
+.recordings-list 
+{
+    margin-top: 20px;
+    width: 100%;
+    overflow-x: auto;
+}
+
+#recordingsTable 
+{
+    width: 100%;
+    border-collapse: collapse;
+}
+
+#recordingsTable th, #recordingsTable td 
+{
+    padding: 8px 12px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+}
+
+#recordingsTable th 
+{
+    background-color: #f5f5f5;
+    font-weight: bold;
+}
+
+.player-panel 
+{
+    margin-top: 30px;
+    padding: 20px;
+    background-color: #f9f9f9;
+    border-radius: 5px;
+    border: 1px solid #ddd;
+}
+
+.player-controls 
+{
+    margin-bottom: 15px;
+}
+
+.playback-info 
+{
+    margin-bottom: 15px;
+    font-weight: bold;
+}
+
+#playbackOutput 
+{
+    height: 300px;
+    overflow: auto;
+    background-color: #000;
+    color: #fff;
+    font-family: monospace;
+    padding: 10px;
+    white-space: pre;
+}

@@ -2,6 +2,8 @@
 
 #include "video_source_interface.hpp"
 #include "ascii_converter_interface.hpp"
+#include "record_controller.hpp"
+#include "playback_controller.hpp"
 
 #include <memory>
 #include <string>
@@ -37,6 +39,17 @@ public:
     
     std::string get_status() const;
 
+    void start_recording();
+    void stop_recording();
+    bool is_recording() const;
+
+    net::awaitable<void> start_playback(const std::string& filename, 
+                                       std::shared_ptr<WebSocketSession> session);
+    net::awaitable<void> pause_playback();
+    net::awaitable<void> resume_playback();
+    net::awaitable<void> stop_playback();
+    net::awaitable<void> set_playback_speed(double speed);
+
 private:
     net::awaitable<void> capture_loop();
     net::awaitable<void> broadcast_frame(const std::string& frame);
@@ -56,4 +69,9 @@ private:
     
     net::steady_timer frame_timer_;
     net::cancellation_signal capture_cancel_;
+
+    std::shared_ptr<RecordController> record_controller_;
+
+    std::shared_ptr<PlaybackController> playback_controller_;
+    std::shared_ptr<WebSocketSession> playback_session_;
 };

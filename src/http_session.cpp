@@ -9,6 +9,7 @@
 #include <nlohmann/json.hpp>
 #include <fstream>
 #include <sstream>
+#include <filesystem>
 
 HttpSession::HttpSession(
     tcp::socket socket,
@@ -220,6 +221,110 @@ void HttpSession::handle_request()
         res.result(http::status::ok);
         res.set(http::field::content_type, "application/json");
         res.body() = j.dump();
+        
+        res.prepare_payload();
+        http::write(stream_, res);
+        return;
+    }
+
+    if (request_.target() == "/recordings") 
+    {
+        auto logger = Logger::get();
+        logger->debug("Handling /recordings request");
+        
+        nlohmann::json j;
+        
+        try 
+        {
+            // Read all recording files
+            for (const auto& entry : std::filesystem::directory_iterator("recordings")) 
+            {
+                if (entry.is_regular_file() && entry.path().extension() == ".asr") 
+                {
+                    nlohmann::json file_info;
+                    file_info["filename"] = entry.path().filename().string();
+                    file_info["size"] = entry.file_size();
+                    file_info["last_modified"] = std::filesystem::last_write_time(entry.path()).time_since_epoch().count();
+                    
+                    // Try to read metadata from file
+                    std::ifstream file(entry.path(), std::ios::binary);
+                    if (file.is_open()) 
+                    {
+                        std::string line;
+                        std::getline(file, line); // Skip header
+                        
+                        while (std::getline(file, line) && line != "frames:") 
+                        {
+                            size_t colon_pos = line.find(':');
+                            if (colon_pos != std::string::npos) 
+                            {
+                                std::string key = line.substr(0, colon_pos);
+                                std::string value = line.substr(colon_pos + 1);
+                                
+                                if (key == "timestamp") 
+                                {
+                                    file_info["timestamp"] = value;
+                                } 
+                                else if (key == "end_time") 
+                                {
+                                    file_info["duration"] = std::stoi(value);
+                                } 
+                                else if (key == "frame_count") 
+                                {
+                                    file_info["frame_count"] = std::stoi(value);
+                                }
+                            }
+                        }
+                        
+                        file.close();
+                    }
+                    
+                    j.push_back(file_info);
+                }
+            }
+        } 
+        catch (const std::exception& e) 
+        {
+            logger->error("Error reading recordings: {}", e.what());
+        }
+        
+        res.result(http::status::ok);
+        res.set(http::field::content_type, "application/json");
+        res.body() = j.dump();
+        
+        res.prepare_payload();
+        http::write(stream_, res);
+        return;
+    }
+
+    if (request_.target().starts_with("/recordings/") && request_.method() == http::verb::delete_) 
+    {
+        auto logger = Logger::get();
+        std::string filename = request_.target().substr(12); // Remove "/recordings/"
+        
+        // Basic security check to prevent path traversal
+        if (filename.find("..") != std::string::npos || filename.find("/") != std::string::npos) 
+        {
+            res.result(http::status::bad_request);
+            res.body() = "Invalid filename";
+        } 
+        else 
+        {
+            std::string filepath = "recordings/" + filename;
+            
+            if (std::filesystem::exists(filepath)) 
+            {
+                std::filesystem::remove(filepath);
+                res.result(http::status::ok);
+                res.body() = "File deleted";
+                logger->info("Deleted recording: {}", filename);
+            } 
+            else 
+            {
+                res.result(http::status::not_found);
+                res.body() = "File not found";
+            }
+        }
         
         res.prepare_payload();
         http::write(stream_, res);

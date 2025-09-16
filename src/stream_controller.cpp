@@ -12,7 +12,8 @@ StreamController::StreamController(
       strand_(net::make_strand(ioc)),
       frame_timer_(ioc),
       video_source_(std::move(video_source)),
-      ascii_converter_(std::move(ascii_converter))
+      ascii_converter_(std::move(ascii_converter)),
+      record_controller_(std::make_shared<RecordController>(ioc))
 {}
 
 StreamController::~StreamController() 
@@ -144,6 +145,12 @@ net::awaitable<void> StreamController::capture_loop()
             }
             
             std::string ascii_frame = ascii_converter_->convert(frame, frame_width_, frame_height_);
+            
+            if (record_controller_->is_recording()) 
+            {
+                record_controller_->write_frame(ascii_frame);
+            }
+            
             co_await broadcast_frame(ascii_frame);
         }
     } 
@@ -187,4 +194,88 @@ void StreamController::cleanup()
 std::string StreamController::get_status() const 
 {
     return is_streaming_ ? "active" : "inactive";
+}
+
+void StreamController::start_recording() 
+{
+    auto logger = Logger::get();
+    
+    if (record_controller_->is_recording()) 
+    {
+        logger->warn("Recording already in progress");
+        return;
+    }
+    
+    if (record_controller_->start_recording()) 
+    {
+        logger->info("Recording started");
+    } 
+    else 
+    {
+        logger->error("Failed to start recording");
+    }
+}
+
+void StreamController::stop_recording() 
+{
+    if (record_controller_->is_recording()) 
+    {
+        record_controller_->stop_recording();
+        auto logger = Logger::get();
+        logger->info("Recording stopped");
+    }
+}
+
+bool StreamController::is_recording() const 
+{
+    return record_controller_->is_recording();
+}
+
+net::awaitable<void> StreamController::start_playback(const std::string& filename, 
+                                                     std::shared_ptr<WebSocketSession> session) 
+{
+    co_await net::dispatch(strand_, net::use_awaitable);
+    
+    // Stop any current playback
+    co_await stop_playback();
+    
+    // Load the recording
+    if (playback_controller_->load_recording("recordings/" + filename)) 
+    {
+        playback_session_ = session;
+        
+        // Start playback
+        playback_controller_->start_playback([self = shared_from_this()](const std::string& frame) {
+            // Send frame to playback session
+            if (self->playback_session_) 
+            {
+                self->playback_session_->send_frame(frame);
+            }
+        });
+    }
+}
+
+net::awaitable<void> StreamController::pause_playback() 
+{
+    co_await net::dispatch(strand_, net::use_awaitable);
+    playback_controller_->pause_playback();
+}
+
+net::awaitable<void> StreamController::resume_playback() 
+{
+    co_await net::dispatch(strand_, net::use_awaitable);
+    playback_controller_->resume_playback();
+}
+
+net::awaitable<void> StreamController::stop_playback() 
+{
+    co_await net::dispatch(strand_, net::use_awaitable);
+    playback_controller_->stop_playback();
+    playback_session_.reset();
+}
+
+net::awaitable<void> StreamController::set_playback_speed(double speed) 
+{
+    co_await net::dispatch(strand_, net::use_awaitable);
+    playback_controller_->set_playback_speed(speed);
 }

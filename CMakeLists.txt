@@ -64,6 +64,8 @@ set(SERVER_SOURCES
     src/stream_controller.cpp
     src/network_utils.cpp 
     src/vk_tunnel.cpp
+    src/record_controller.cpp
+    src/playback_controller.cpp
 )
 
 # Создание исполняемого файла для сервера

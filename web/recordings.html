@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>ASCII Streamer - Recordings</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" href="images/icon.png" type="image/x-icon">
+</head>
+<body>
+    <div class="container">
+        <h1>Recorded Streams</h1>
+        
+        <div class="controls">
+            <button id="refreshBtn">Refresh List</button>
+            <button id="backBtn">Back to Stream</button>
+        </div>
+        
+        <div class="recordings-list">
+            <table id="recordingsTable">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Date</th>
+                        <th>Duration</th>
+                        <th>Size</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="recordingsBody">
+                    <!-- Records will be populated here -->
+                </tbody>
+            </table>
+        </div>
+        
+        <div id="playerPanel" class="player-panel" style="display: none;">
+            <h2>Playback Controls</h2>
+            <div class="player-controls">
+                <button id="playBtn">Play</button>
+                <button id="pauseBtn" disabled>Pause</button>
+                <button id="stopBtn" disabled>Stop</button>
+                <span>Speed: </span>
+                <select id="speedSelect">
+                    <option value="0.5">0.5x</option>
+                    <option value="1" selected>1x</option>
+                    <option value="2">2x</option>
+                    <option value="4">4x</option>
+                </select>
+            </div>
+            <div class="playback-info">
+                <span id="currentTime">00:00</span> / <span id="totalTime">00:00</span>
+            </div>
+            <pre id="playbackOutput"></pre>
+        </div>
+    </div>
+    
+    <script src="recordings.js"></script>
+</body>
+</html>

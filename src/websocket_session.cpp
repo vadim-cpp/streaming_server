@@ -284,6 +284,50 @@ net::awaitable<void> WebSocketSession::handle_message(const std::string& message
         {
             co_await controller_->stop_streaming();
             send_frame("STREAM_STOPPED");
+        }
+        else if (type == "playback_start") 
+        {
+            std::string filename = j.value("filename", "");
+            if (!filename.empty()) 
+            {
+                co_await controller_->start_playback(filename, shared_from_this());
+                send_frame("PLAYBACK_STARTED");
+            } 
+            else 
+            {
+                send_frame("ERROR: No filename specified");
+            }
+        }
+        else if (type == "playback_pause") 
+        {
+            co_await controller_->pause_playback();
+            send_frame("PLAYBACK_PAUSED");
+        }
+        else if (type == "playback_resume") 
+        {
+            co_await controller_->resume_playback();
+            send_frame("PLAYBACK_RESUMED");
+        }
+        else if (type == "playback_stop") 
+        {
+            co_await controller_->stop_playback();
+            send_frame("PLAYBACK_STOPPED");
+        }
+        else if (type == "playback_speed") 
+        {
+            double speed = j.value("speed", 1.0);
+            co_await controller_->set_playback_speed(speed);
+            send_frame("PLAYBACK_SPEED_CHANGED");
+        }
+        else if (type == "record_start" && is_controller_) 
+        {
+            controller_->start_recording();
+            send_frame("RECORDING_STARTED");
+        } 
+        else if (type == "record_stop" && is_controller_) 
+        {
+            controller_->stop_recording();
+            send_frame("RECORDING_STOPPED");
         } 
         else 
         {

@@ -13,7 +13,8 @@ StreamController::StreamController(
       frame_timer_(ioc),
       video_source_(std::move(video_source)),
       ascii_converter_(std::move(ascii_converter)),
-      record_controller_(std::make_shared<RecordController>(ioc))
+      record_controller_(std::make_shared<RecordController>(ioc)),
+      playback_controller_(std::make_shared<PlaybackController>(ioc))
 {}
 
 StreamController::~StreamController() 

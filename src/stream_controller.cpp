@@ -1,6 +1,8 @@
 #include "stream_controller.hpp"
 #include "websocket_session.hpp"
 #include "logger.hpp"
+
+#include <nlohmann/json.hpp>
 #include <opencv2/opencv.hpp>
 
 StreamController::StreamController(
@@ -20,6 +22,65 @@ StreamController::StreamController(
 StreamController::~StreamController() 
 {
     cleanup();
+}
+
+void StreamController::enable_subtitles(const std::string& host, const std::string& port)
+{
+    auto logger = Logger::get();
+    
+    if (subtitles_enabled_)
+    {
+        logger->warn("Subtitles already enabled");
+        return;
+    }
+    
+    try
+    {
+        subtitle_receiver_ = std::make_shared<SubtitleReceiver>(ioc_,
+            [self = shared_from_this()](const std::string& subtitle) {
+                self->set_current_subtitle(subtitle);
+            });
+        
+        subtitle_receiver_->connect(host, port);
+        subtitles_enabled_ = true;
+        
+        logger->info("Subtitles enabled for server: {}:{}", host, port);
+    }
+    catch (const std::exception& e)
+    {
+        logger->error("Failed to enable subtitles: {}", e.what());
+    }
+}
+
+void StreamController::disable_subtitles()
+{
+    if (subtitle_receiver_)
+    {
+        subtitle_receiver_->close();
+        subtitle_receiver_.reset();
+    }
+    
+    {
+        std::lock_guard<std::mutex> lock(subtitle_mutex_);
+        current_subtitle_.clear();
+    }
+    
+    subtitles_enabled_ = false;
+    
+    auto logger = Logger::get();
+    logger->info("Subtitles disabled");
+}
+
+void StreamController::set_current_subtitle(const std::string& subtitle)
+{
+    std::lock_guard<std::mutex> lock(subtitle_mutex_);
+    current_subtitle_ = subtitle;
+}
+
+std::string StreamController::get_current_subtitle()
+{
+    std::lock_guard<std::mutex> lock(subtitle_mutex_);
+    return current_subtitle_;
 }
 
 net::awaitable<void> StreamController::start_streaming(int camera_index, const std::string& resolution, int fps) 
@@ -167,11 +228,24 @@ net::awaitable<void> StreamController::broadcast_frame(const std::string& frame)
 {
     co_await net::dispatch(strand_, net::use_awaitable);
     
+    std::string subtitle = get_current_subtitle();
+    
+    // Создаем JSON с фреймом и субтитрами
+    nlohmann::json frame_data;
+    frame_data["frame"] = frame;
+    
+    if (!subtitle.empty())
+    {
+        frame_data["subtitles"] = subtitle;
+    }
+    
+    std::string message = frame_data.dump();
+    
     for (auto it = viewers_.begin(); it != viewers_.end(); ) 
     {
         if (auto viewer = it->lock()) 
         {
-            viewer->send_frame(frame);
+            viewer->send_frame(message);
             ++it;
         } 
         else 

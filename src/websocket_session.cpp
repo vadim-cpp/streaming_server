@@ -328,7 +328,20 @@ net::awaitable<void> WebSocketSession::handle_message(const std::string& message
         {
             controller_->stop_recording();
             send_frame("RECORDING_STOPPED");
-        } 
+        }
+        else if (type == "enable_subtitles" && is_controller_) 
+        {
+            std::string host = j.value("host", "localhost");
+            std::string port = j.value("port", "9001");
+            
+            controller_->enable_subtitles(host, port);
+            send_frame("SUBTITLES_ENABLED");
+        }
+        else if (type == "disable_subtitles" && is_controller_) 
+        {
+            controller_->disable_subtitles();
+            send_frame("SUBTITLES_DISABLED");
+        }
         else 
         {
             send_frame("UNKNOWN_COMMAND");

@@ -4,11 +4,13 @@
 #include "ascii_converter_interface.hpp"
 #include "record_controller.hpp"
 #include "playback_controller.hpp"
+#include "subtitle_receiver.hpp"
 
 #include <memory>
 #include <string>
 #include <vector>
 #include <atomic>
+#include <mutex>
 #include <boost/asio.hpp>
 #include <boost/asio/as_tuple.hpp>
 #include <boost/asio/experimental/awaitable_operators.hpp>
@@ -50,6 +52,11 @@ public:
     net::awaitable<void> stop_playback();
     net::awaitable<void> set_playback_speed(double speed);
 
+    void enable_subtitles(const std::string& host, const std::string& port);
+    void disable_subtitles();
+    void set_current_subtitle(const std::string& subtitle);
+    std::string get_current_subtitle();
+
 private:
     net::awaitable<void> capture_loop();
     net::awaitable<void> broadcast_frame(const std::string& frame);
@@ -74,4 +81,9 @@ private:
 
     std::shared_ptr<PlaybackController> playback_controller_;
     std::shared_ptr<WebSocketSession> playback_session_;
+
+    std::shared_ptr<SubtitleReceiver> subtitle_receiver_;
+    std::string current_subtitle_;
+    std::mutex subtitle_mutex_;
+    std::atomic<bool> subtitles_enabled_{false};
 };

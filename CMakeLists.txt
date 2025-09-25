@@ -66,6 +66,7 @@ set(SERVER_SOURCES
     src/vk_tunnel.cpp
     src/record_controller.cpp
     src/playback_controller.cpp
+    src/subtitle_receiver.cpp
 )
 
 # Создание исполняемого файла для сервера

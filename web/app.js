@@ -144,6 +144,8 @@ class AsciiStreamer
                 role: 'controller'
             }));
         };
+
+        this.enableSubtitles();
         
         this.ws.onmessage = (event) => {
             // Убираем нулевой символ и пробелы
@@ -247,6 +249,28 @@ class AsciiStreamer
         {
             console.error('Failed to get API key:', error);
             return '';
+        }
+    }
+
+    enableSubtitles() 
+    {
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) 
+            {
+            this.ws.send(JSON.stringify({
+                type: 'enable_subtitles',
+                host: window.location.hostname,
+                port: '9001'
+            }));
+        }
+    }
+
+    disableSubtitles() 
+    {
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) 
+        {
+            this.ws.send(JSON.stringify({
+                type: 'disable_subtitles'
+            }));
         }
     }
 }

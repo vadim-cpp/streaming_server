@@ -7,6 +7,7 @@
 #include <cstdlib>
 #include <thread>
 #include <chrono> 
+#include <iostream>
 
 static size_t WriteCallback(void* contents, size_t size, size_t nmemb, std::string* data) 
 {
@@ -75,11 +76,14 @@ std::string VKTunnel::setup_tunnel(int port)
             size_t end = line.find(".vk-apps.com");
             if (end != std::string::npos) 
             {
-                tunnel_url = line.substr(start, end - start + 14);
+                tunnel_url = line.substr(start, end - start + 12);
                 break;
             }
         }
     }
+
+    std::cout << line << "\n";
+    std::cout << tunnel_url << "\n";
     
     if (tunnel_url.empty()) 
     {

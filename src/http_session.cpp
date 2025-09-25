@@ -330,6 +330,13 @@ void HttpSession::handle_request()
         http::write(stream_, res);
         return;
     }
+
+    if (request_.target() == "/subtitles") 
+    {
+        //std::make_shared<SubtitleSession>(std::move(socket), shared_state)->run();
+        return;
+    }
+
     
     if (path.back() == '/') 
     {

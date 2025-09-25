@@ -331,13 +331,6 @@ void HttpSession::handle_request()
         return;
     }
 
-    if (request_.target() == "/subtitles") 
-    {
-        //std::make_shared<SubtitleSession>(std::move(socket), shared_state)->run();
-        return;
-    }
-
-    
     if (path.back() == '/') 
     {
         logger->debug("Appending index.html to path");

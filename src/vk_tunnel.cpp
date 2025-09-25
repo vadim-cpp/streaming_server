@@ -7,7 +7,6 @@
 #include <cstdlib>
 #include <thread>
 #include <chrono> 
-#include <iostream>
 
 static size_t WriteCallback(void* contents, size_t size, size_t nmemb, std::string* data) 
 {
@@ -81,9 +80,6 @@ std::string VKTunnel::setup_tunnel(int port)
             }
         }
     }
-
-    std::cout << line << "\n";
-    std::cout << tunnel_url << "\n";
     
     if (tunnel_url.empty()) 
     {

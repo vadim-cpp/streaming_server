@@ -17,7 +17,11 @@ StreamController::StreamController(
       ascii_converter_(std::move(ascii_converter)),
       record_controller_(std::make_shared<RecordController>(ioc)),
       playback_controller_(std::make_shared<PlaybackController>(ioc))
-{}
+{
+    // Инициализация аудио компонентов
+    audio_capture_ = std::make_shared<AudioCapture>();
+    subtitle_client_ = std::make_shared<SubtitleClient>(ioc);
+}
 
 StreamController::~StreamController() 
 {
@@ -81,6 +85,70 @@ std::string StreamController::get_current_subtitle()
 {
     std::lock_guard<std::mutex> lock(subtitle_mutex_);
     return current_subtitle_;
+}
+
+std::vector<AudioCapture::MicrophoneInfo> StreamController::list_microphones() 
+{
+    return audio_capture_->list_microphones();
+}
+
+void StreamController::start_audio_capture(int device_index)
+{
+    auto logger = Logger::get();
+    
+    if (audio_capture_->is_capturing()) 
+    {
+        logger->warn("Audio capture already running");
+        return;
+    }
+    
+    // Настраиваем callback для получения субтитров
+    auto subtitle_callback = [self = shared_from_this()](const std::string& subtitle) {
+        self->set_current_subtitle(subtitle);
+    };
+    
+    // Подключаемся к серверу субтитров
+    subtitle_client_->connect(subtitle_host_, subtitle_port_, subtitle_callback);
+    
+    // Настраиваем callback для отправки аудио данных
+    auto audio_callback = [self = shared_from_this()](const std::vector<int16_t>& audio_data) {
+        if (self->subtitle_client_->is_connected()) 
+        {
+            self->subtitle_client_->send_audio_data(audio_data);
+        }
+    };
+    
+    // Запускаем захват аудио
+    if (audio_capture_->start_capture(device_index, audio_callback)) 
+    {
+        subtitles_enabled_ = true;
+        logger->info("Audio capture and subtitle processing started");
+    } 
+    else 
+    {
+        logger->error("Failed to start audio capture");
+    }
+}
+
+void StreamController::stop_audio_capture() 
+{
+    audio_capture_->stop_capture();
+    subtitle_client_->disconnect();
+    subtitles_enabled_ = false;
+    
+    auto logger = Logger::get();
+    logger->info("Audio capture and subtitle processing stopped");
+}
+
+bool StreamController::is_audio_capturing() const 
+{
+    return audio_capture_->is_capturing();
+}
+
+void StreamController::set_subtitle_server(const std::string& host, const std::string& port) 
+{
+    subtitle_host_ = host;
+    subtitle_port_ = port;
 }
 
 net::awaitable<void> StreamController::start_streaming(int camera_index, const std::string& resolution, int fps) 

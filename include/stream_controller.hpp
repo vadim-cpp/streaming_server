@@ -5,6 +5,8 @@
 #include "record_controller.hpp"
 #include "playback_controller.hpp"
 #include "subtitle_receiver.hpp"
+#include "audio_capture.hpp"
+#include "subtitle_client.hpp"
 
 #include <memory>
 #include <string>
@@ -54,6 +56,15 @@ public:
 
     void enable_subtitles(const std::string& host, const std::string& port);
     void disable_subtitles();
+
+    // Аудио методы
+    std::vector<AudioCapture::MicrophoneInfo> list_microphones();
+    void start_audio_capture(int device_index);
+    void stop_audio_capture();
+    bool is_audio_capturing() const;
+    
+    // Субтитры
+    void set_subtitle_server(const std::string& host, const std::string& port);
     void set_current_subtitle(const std::string& subtitle);
     std::string get_current_subtitle();
 
@@ -85,5 +96,12 @@ private:
     std::shared_ptr<SubtitleReceiver> subtitle_receiver_;
     std::string current_subtitle_;
     std::mutex subtitle_mutex_;
-    std::atomic<bool> subtitles_enabled_{false};
+
+    std::shared_ptr<AudioCapture> audio_capture_;
+    std::shared_ptr<SubtitleClient> subtitle_client_;
+    bool subtitles_enabled_ = false;
+
+    // Конфигурация сервера субтитров
+    std::string subtitle_host_ = "localhost";
+    std::string subtitle_port_ = "9001";
 };

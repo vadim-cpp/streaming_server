@@ -331,6 +331,30 @@ void HttpSession::handle_request()
         return;
     }
 
+    if (request_.target() == "/microphones") {
+        auto logger = Logger::get();
+        logger->debug("Handling /microphones request");
+        
+        auto microphones = server_->stream_controller()->list_microphones();
+        
+        nlohmann::json j;
+        for (const auto& mic : microphones) {
+            j.push_back({
+                {"index", mic.index},
+                {"name", mic.name},
+                {"id", mic.id}
+            });
+        }
+        
+        res.result(http::status::ok);
+        res.set(http::field::content_type, "application/json");
+        res.body() = j.dump();
+        
+        res.prepare_payload();
+        http::write(stream_, res);
+        return;
+    }
+
     if (path.back() == '/') 
     {
         logger->debug("Appending index.html to path");

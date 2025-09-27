@@ -16,11 +16,6 @@ class AsciiStreamer
         this.recordBtn = document.getElementById('recordBtn');
         this.isRecording = false;
         
-        this.audioWs = null;
-        this.audioContext = null;
-        this.audioProcessor = null;
-        this.audioStream = null;
-        
         this.subtitleElement = null;
         this.subtitleTimeout = null;
         
@@ -30,6 +25,7 @@ class AsciiStreamer
     init() 
     {
         this.loadCameras();
+        this.loadMicrophones();
         this.setupEventListeners();
         this.createSubtitleElement();
     }
@@ -119,7 +115,7 @@ class AsciiStreamer
     
     async startRecording() 
     {
-        if (!this.ws || this.ws.readyState !== WebSocket.OPEN) 
+        if (!this.ws || this.ws.readyState !== WebSocket.OPEN)
         {
             alert('Please start the stream first');
             return;
@@ -182,7 +178,7 @@ class AsciiStreamer
             const cameras = await response.json();
             this.populateCameraSelect(cameras);
         } 
-        catch (error) 
+        catch (error)
         {
             console.error('Failed to load cameras:', error);
         }
@@ -199,148 +195,29 @@ class AsciiStreamer
         });
     }
 
-    async listMicrophones() 
+    async loadMicrophones() 
     {
         try 
         {
-            if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) 
-            {
-                console.warn('enumerateDevices() not supported.');
-                return;
-            }
-
-            const devices = await navigator.mediaDevices.enumerateDevices();
-            this.microphoneSelect.innerHTML = '';
-            
-            // Добавляем опцию по умолчанию
-            const defaultOption = document.createElement('option');
-            defaultOption.value = '';
-            defaultOption.textContent = 'Default Microphone';
-            this.microphoneSelect.appendChild(defaultOption);
-
-            devices.forEach((device) => {
-                if (device.kind === 'audioinput') {
-                    const option = document.createElement('option');
-                    option.value = device.deviceId;
-                    option.textContent = device.label || `Microphone ${this.microphoneSelect.length + 1}`;
-                    this.microphoneSelect.appendChild(option);
-                }
-            });
+            const response = await fetch('/microphones');
+            const microphones = await response.json();
+            this.populateMicrophoneSelect(microphones);
         } 
         catch (error) 
         {
-            console.error('Error listing microphones:', error);
+            console.error('Failed to load microphones:', error);
         }
     }
 
-    async startAudioStream() 
+    populateMicrophoneSelect(microphones) 
     {
-        try 
-        {
-            const selectedMicId = this.microphoneSelect.value;
-            
-            // Запрашиваем доступ к микрофону
-            this.audioStream = await navigator.mediaDevices.getUserMedia({
-                audio: {
-                    deviceId: selectedMicId ? { exact: selectedMicId } : undefined,
-                    sampleRate: 16000,
-                    channelCount: 1,
-                    echoCancellation: true,
-                    noiseSuppression: true
-                },
-                video: false
-            });
-
-            // Создаем аудиоконтекст
-            this.audioContext = new AudioContext({
-                sampleRate: 16000,
-                latencyHint: 'interactive'
-            });
-
-            const source = this.audioContext.createMediaStreamSource(this.audioStream);
-            this.audioProcessor = this.audioContext.createScriptProcessor(4096, 1, 1);
-
-            source.connect(this.audioProcessor);
-            this.audioProcessor.connect(this.audioContext.destination);
-
-            // Подключаемся к WebSocket серверу распознавания речи
-            this.audioWs = new WebSocket(`wss://${window.location.hostname}:9001`);
-            this.audioWs.binaryType = 'arraybuffer';
-
-            this.audioProcessor.onaudioprocess = (event) => {
-                const inputData = event.inputBuffer.getChannelData(0);
-                const int16Buffer = new Int16Array(inputData.length);
-                
-                // Конвертируем float32 в int16
-                for (let i = 0; i < inputData.length; i++) 
-                {
-                    int16Buffer[i] = Math.max(-1, Math.min(1, inputData[i])) * 32767;
-                }
-                
-                // Отправляем аудиоданные, если соединение открыто
-                if (this.audioWs && this.audioWs.readyState === WebSocket.OPEN) 
-                {
-                    this.audioWs.send(int16Buffer);
-                }
-            };
-
-            this.audioWs.onopen = () => {
-                console.log('Audio WebSocket connected to speech recognition server');
-            };
-
-            this.audioWs.onmessage = (event) => {
-                try {
-                    const data = JSON.parse(event.data);
-                    if (data.type === 'subtitle' && data.text) {
-                        console.log('Recognized speech:', data.text);
-                        this.showSubtitles(data.text);
-                    }
-                } catch (error) {
-                    console.error('Error parsing subtitle message:', error);
-                }
-            };
-
-            this.audioWs.onclose = () => {
-                console.log('Audio WebSocket closed');
-            };
-
-            this.audioWs.onerror = (error) => {
-                console.error('Audio WebSocket error:', error);
-            };
-
-        } catch (error) {
-            console.error('Error starting audio stream:', error);
-            alert('Failed to access microphone. Please check permissions.');
-        }
-    }
-
-    stopAudioStream() 
-    {
-        if (this.audioProcessor) 
-        {
-            this.audioProcessor.disconnect();
-            this.audioProcessor = null;
-        }
-
-        if (this.audioContext) 
-        {
-            this.audioContext.close();
-            this.audioContext = null;
-        }
-
-        if (this.audioStream) 
-        {
-            this.audioStream.getTracks().forEach(track => track.stop());
-            this.audioStream = null;
-        }
-
-        if (this.audioWs) 
-        {
-            this.audioWs.close();
-            this.audioWs = null;
-        }
-
-        this.hideSubtitles();
+        this.microphoneSelect.innerHTML = '<option value="">No microphone</option>';
+        microphones.forEach(mic => {
+            const option = document.createElement('option');
+            option.value = mic.index;
+            option.textContent = mic.name;
+            this.microphoneSelect.appendChild(option);
+        });
     }
 
     async start() 
@@ -349,17 +226,10 @@ class AsciiStreamer
 
         try 
         {
-            // Загружаем список микрофонов при первом запуске
-            await this.listMicrophones();
-            
-            // Запускаем аудиопоток
-            await this.startAudioStream();
-
             this.updateUI(true);
             this.output.textContent = "Starting stream...";
             this.isStreaming = true;
             
-            // Получаем API ключ перед созданием соединения
             if (!this.api_key) 
             {
                 this.api_key = await this.getApiKey();
@@ -374,17 +244,19 @@ class AsciiStreamer
                     role: 'controller'
                 }));
 
-                // Включаем субтитры на сервере
-                this.ws.send(JSON.stringify({
-                    type: 'enable_subtitles',
-                    host: window.location.hostname,
-                    port: '9001'
-                }));
+                // Запускаем аудио захват на сервере (если выбран микрофон)
+                const microphoneIndex = this.microphoneSelect.value;
+                if (microphoneIndex) {
+                    this.ws.send(JSON.stringify({
+                        type: 'start_audio_capture',
+                        microphone_index: parseInt(microphoneIndex)
+                    }));
+                }
             };
             
             this.ws.onmessage = (event) => {
-                try {
-                    // Пытаемся разобрать как JSON (для сообщений с субтитрами)
+                try 
+                {
                     const data = JSON.parse(event.data);
                     
                     if (data.frame) 
@@ -421,9 +293,7 @@ class AsciiStreamer
                 this.stop();
             };
 
-        } 
-        catch (error) 
-        {
+        } catch (error) {
             console.error('Error starting stream:', error);
             alert('Failed to start stream: ' + error.message);
             this.stop();
@@ -472,12 +342,12 @@ class AsciiStreamer
                 this.isRecording = false;
                 break;
                 
-            case "SUBTITLES_ENABLED":
-                console.log('Subtitles enabled on server');
+            case "AUDIO_CAPTURE_STARTED":
+                console.log('Audio capture started on server');
                 break;
                 
-            case "SUBTITLES_DISABLED":
-                console.log('Subtitles disabled on server');
+            case "AUDIO_CAPTURE_STOPPED":
+                console.log('Audio capture stopped on server');
                 break;
                 
             default:
@@ -489,19 +359,17 @@ class AsciiStreamer
 
     async stop() 
     {
-        // Отправляем команду отключения субтитров
-        if (this.ws && this.ws.readyState === WebSocket.OPEN) 
-        {
+        // Останавливаем аудио захват на сервере
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
             this.ws.send(JSON.stringify({
-                type: 'disable_subtitles'
+                type: 'stop_audio_capture'
             }));
             
             this.ws.send(JSON.stringify({ type: 'stop' }));
             
             // Ждем подтверждения от сервера перед закрытием
             setTimeout(() => {
-                if (this.ws) 
-                {
+                if (this.ws) {
                     this.ws.close();
                     this.ws = null;
                 }
@@ -513,8 +381,7 @@ class AsciiStreamer
             this.updateUI(false);
         }
         
-        // Останавливаем аудиопоток
-        this.stopAudioStream();
+        this.hideSubtitles();
     }
 
     updateUI(isStreaming) 
@@ -529,6 +396,14 @@ class AsciiStreamer
         {
             this.output.textContent = "Stream stopped";
             this.hideSubtitles();
+            
+            // Сбрасываем состояние записи
+            if (this.isRecording) 
+            {
+                this.recordBtn.textContent = 'Start Recording';
+                this.recordBtn.style.background = '';
+                this.isRecording = false;
+            }
         }
     }
 
@@ -555,7 +430,7 @@ class AsciiStreamer
             const data = await response.json();
             
             if (data.success) 
-            {
+                {
                 alert('Tunnel test passed! Your server is accessible from the internet.');
             } 
             else 
@@ -592,16 +467,17 @@ async function checkTunnelStatus()
         
         if (!statusElement || !urlElement) return;
         
-        statusElement.textContent = data.available ? 'Active' : 'Not available';
-        statusElement.style.color = data.available ? 'green' : 'orange';
-            
         if (data.available) 
         {
+            statusElement.textContent = 'Active';
+            statusElement.style.color = 'green';
             urlElement.textContent = data.url;
             urlElement.style.color = 'green';
         } 
         else 
         {
+            statusElement.textContent = 'Not available';
+            statusElement.style.color = 'orange';
             urlElement.textContent = 'Direct connection only';
             urlElement.style.color = 'orange';
         }
@@ -609,5 +485,32 @@ async function checkTunnelStatus()
     catch (error) 
     {
         console.error('Failed to check tunnel status:', error);
+        
+        const statusElement = document.getElementById('tunnelStatusText');
+        const urlElement = document.getElementById('tunnelUrl');
+        
+        if (statusElement && urlElement) 
+        {
+            statusElement.textContent = 'Error';
+            statusElement.style.color = 'red';
+            urlElement.textContent = 'Failed to check status';
+            urlElement.style.color = 'red';
+        }
     }
 }
+
+// Обработка закрытия страницы - останавливаем стрим
+window.addEventListener('beforeunload', () => {
+    const streamer = window.asciiStreamer;
+    if (streamer && streamer.isStreaming) 
+    {
+        // Отправляем команду остановки, но не ждем ответа
+        if (streamer.ws && streamer.ws.readyState === WebSocket.OPEN) 
+        {
+            streamer.ws.send(JSON.stringify({
+                type: 'stop_audio_capture'
+            }));
+            streamer.ws.send(JSON.stringify({ type: 'stop' }));
+        }
+    }
+});

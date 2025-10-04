@@ -3,6 +3,7 @@
 /.vscode
 /.idea
 /logs
+/subtitle_server
 *.log
 *.crt
 *.key

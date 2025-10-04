@@ -81,8 +81,6 @@ set(SERVER_SOURCES
     src/record_controller.cpp
     src/playback_controller.cpp
     src/subtitle_receiver.cpp
-    src/subtitle_client.cpp
-    src/audio_capture.cpp
 )
 
 # Создание исполняемого файла для сервера

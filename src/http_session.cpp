@@ -5,6 +5,7 @@
 #include "logger.hpp"
 #include "network_utils.hpp"
 #include "api_key_manager.hpp"
+#include "common_types.hpp"
 
 #include <nlohmann/json.hpp>
 #include <fstream>
@@ -331,7 +332,8 @@ void HttpSession::handle_request()
         return;
     }
 
-    if (request_.target() == "/microphones") {
+    if (request_.target() == "/microphones") 
+    {
         auto logger = Logger::get();
         logger->debug("Handling /microphones request");
         
@@ -342,7 +344,8 @@ void HttpSession::handle_request()
             j.push_back({
                 {"index", mic.index},
                 {"name", mic.name},
-                {"id", mic.id}
+                {"id", mic.id},
+                {"sample_rate", mic.sample_rate}
             });
         }
         
@@ -354,7 +357,6 @@ void HttpSession::handle_request()
         http::write(stream_, res);
         return;
     }
-
     if (path.back() == '/') 
     {
         logger->debug("Appending index.html to path");

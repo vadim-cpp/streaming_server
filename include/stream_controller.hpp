@@ -5,8 +5,7 @@
 #include "record_controller.hpp"
 #include "playback_controller.hpp"
 #include "subtitle_receiver.hpp"
-#include "audio_capture.hpp"
-#include "subtitle_client.hpp"
+#include "common_types.hpp"
 
 #include <memory>
 #include <string>
@@ -56,17 +55,16 @@ public:
 
     void enable_subtitles(const std::string& host, const std::string& port);
     void disable_subtitles();
+    
+    // Субтитры
+    void set_current_subtitle(const std::string& subtitle);
+    std::string get_current_subtitle();
 
-    // Аудио методы
-    std::vector<AudioCapture::MicrophoneInfo> list_microphones();
+    std::vector<MicrophoneInfo> list_microphones();
+    void request_microphones_list();
     void start_audio_capture(int device_index);
     void stop_audio_capture();
     bool is_audio_capturing() const;
-    
-    // Субтитры
-    void set_subtitle_server(const std::string& host, const std::string& port);
-    void set_current_subtitle(const std::string& subtitle);
-    std::string get_current_subtitle();
 
 private:
     net::awaitable<void> capture_loop();
@@ -93,12 +91,12 @@ private:
     std::shared_ptr<PlaybackController> playback_controller_;
     std::shared_ptr<WebSocketSession> playback_session_;
 
-    std::shared_ptr<SubtitleReceiver> subtitle_receiver_;
     std::string current_subtitle_;
     std::mutex subtitle_mutex_;
+    std::shared_ptr<SubtitleReceiver> subtitle_receiver_;
+    std::vector<MicrophoneInfo> cached_microphones_;
+    bool microphones_loaded_ = false;
 
-    std::shared_ptr<AudioCapture> audio_capture_;
-    std::shared_ptr<SubtitleClient> subtitle_client_;
     bool subtitles_enabled_ = false;
 
     // Конфигурация сервера субтитров

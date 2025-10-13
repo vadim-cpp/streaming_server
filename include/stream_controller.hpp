@@ -53,6 +53,8 @@ public:
     net::awaitable<void> stop_playback();
     net::awaitable<void> set_playback_speed(double speed);
 
+    void init_subtitle_receiver();
+
     void enable_subtitles(const std::string& host, const std::string& port);
     void disable_subtitles();
     

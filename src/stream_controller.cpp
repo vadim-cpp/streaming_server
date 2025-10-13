@@ -18,28 +18,31 @@ StreamController::StreamController(
       record_controller_(std::make_shared<RecordController>(ioc)),
       playback_controller_(std::make_shared<PlaybackController>(ioc))
 {
-   // Создаем weak_ptr для безопасного использования
-    /*auto weak_self = std::weak_ptr<StreamController>(
-        std::static_pointer_cast<StreamController>(shared_from_this()));
-    
+}
+
+void StreamController::init_subtitle_receiver() 
+{
+    auto weak_self = std::weak_ptr<StreamController>(shared_from_this());
+
     subtitle_receiver_ = std::make_shared<SubtitleReceiver>(ioc_,
         [weak_self](const std::string& subtitle) {
-            if (auto self = weak_self.lock()) {
+            if (auto self = weak_self.lock()) 
+            {
                 self->set_current_subtitle(subtitle);
             }
         });
-    
+
     subtitle_receiver_->set_microphone_list_callback(
         [weak_self](const std::vector<MicrophoneInfo>& microphones) {
-            if (auto self = weak_self.lock()) {
+            if (auto self = weak_self.lock()) 
+            {
                 self->cached_microphones_ = microphones;
                 self->microphones_loaded_ = true;
                 auto logger = Logger::get();
                 logger->info("Microphones list updated: {} devices", microphones.size());
             }
-        });*/
-    
-    // Автоматическое подключение к серверу субтитров
+        });
+
     enable_subtitles("localhost", "9001");
 }
 

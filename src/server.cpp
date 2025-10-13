@@ -41,6 +41,7 @@ Server::Server(
     api_key_ = APIKeyManager::generate_key();
     stream_controller_ = std::make_shared<StreamController>(
         ioc, video_source_, ascii_converter_);
+    stream_controller_->initialize();
 
     auto logger = Logger::get();
     logger->info("Server API key: {}", api_key_);

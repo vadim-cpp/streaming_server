@@ -1,0 +1,3 @@
+[submodule "subtitle_server"]
+	path = subtitle_server
+	url = https://github.com/vadim-cpp/subtitle_server.git

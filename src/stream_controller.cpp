@@ -1,6 +1,8 @@
 #include "stream_controller.hpp"
 #include "websocket_session.hpp"
 #include "logger.hpp"
+
+#include <nlohmann/json.hpp>
 #include <opencv2/opencv.hpp>
 
 StreamController::StreamController(
@@ -15,11 +17,158 @@ StreamController::StreamController(
       ascii_converter_(std::move(ascii_converter)),
       record_controller_(std::make_shared<RecordController>(ioc)),
       playback_controller_(std::make_shared<PlaybackController>(ioc))
-{}
+{
+}
+
+void StreamController::init_subtitle_receiver() 
+{
+    auto weak_self = std::weak_ptr<StreamController>(shared_from_this());
+
+    subtitle_receiver_ = std::make_shared<SubtitleReceiver>(ioc_,
+        [weak_self](const std::string& subtitle) {
+            if (auto self = weak_self.lock()) 
+            {
+                self->set_current_subtitle(subtitle);
+            }
+        });
+
+    subtitle_receiver_->set_microphone_list_callback(
+        [weak_self](const std::vector<MicrophoneInfo>& microphones) {
+            if (auto self = weak_self.lock()) 
+            {
+                self->cached_microphones_ = microphones;
+                self->microphones_loaded_ = true;
+                auto logger = Logger::get();
+                logger->info("Microphones list updated: {} devices", microphones.size());
+            }
+        });
+
+    enable_subtitles("localhost", "9001");
+}
 
 StreamController::~StreamController() 
 {
     cleanup();
+}
+
+void StreamController::enable_subtitles(const std::string& host, const std::string& port)
+{
+    auto logger = Logger::get();
+    
+    if (subtitles_enabled_)
+    {
+        logger->warn("Subtitles already enabled");
+        return;
+    }
+    
+    try
+    {
+        subtitle_receiver_->connect(host, port);
+        subtitles_enabled_ = true;
+        
+        logger->info("Subtitles enabled for server: {}:{}", host, port);
+    }
+    catch (const std::exception& e)
+    {
+        logger->error("Failed to enable subtitles: {}", e.what());
+    }
+}
+
+void StreamController::disable_subtitles()
+{
+    if (subtitle_receiver_)
+    {
+        subtitle_receiver_->close();
+    }
+    
+    {
+        std::lock_guard<std::mutex> lock(subtitle_mutex_);
+        current_subtitle_.clear();
+    }
+    
+    subtitles_enabled_ = false;
+    
+    auto logger = Logger::get();
+    logger->info("Subtitles disabled");
+}
+
+void StreamController::set_current_subtitle(const std::string& subtitle)
+{
+    std::lock_guard<std::mutex> lock(subtitle_mutex_);
+    current_subtitle_ = subtitle;
+    
+    auto logger = Logger::get();
+    logger->debug("Subtitle updated: {}", subtitle);
+}
+
+std::string StreamController::get_current_subtitle()
+{
+    std::lock_guard<std::mutex> lock(subtitle_mutex_);
+    return current_subtitle_;
+}
+
+std::vector<MicrophoneInfo> StreamController::list_microphones() 
+{
+    auto logger = Logger::get();
+    
+    if (!subtitle_receiver_ || !subtitle_receiver_->is_connected()) 
+    {
+        logger->warn("Subtitle receiver not connected, cannot get microphones");
+        return {};
+    }
+    
+    // Если список еще не загружен, запрашиваем его
+    if (!microphones_loaded_) 
+    {
+        request_microphones_list();
+        
+        // Ждем немного для получения ответа (упрощенная реализация)
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    }
+    
+    return cached_microphones_;
+}
+
+void StreamController::request_microphones_list()
+{
+    if (subtitle_receiver_ && subtitle_receiver_->is_connected()) 
+    {
+        subtitle_receiver_->request_microphones_list();
+    }
+}
+
+void StreamController::start_audio_capture(int device_index)
+{
+    auto logger = Logger::get();
+    
+    if (!subtitle_receiver_ || !subtitle_receiver_->is_connected()) 
+    {
+        logger->error("Subtitle receiver not connected");
+        return;
+    }
+    
+    subtitle_receiver_->start_audio_capture(device_index);
+    subtitles_enabled_ = true;
+    
+    logger->info("Audio capture started on device index {}", device_index);
+}
+
+void StreamController::stop_audio_capture() 
+{
+    if (subtitle_receiver_) 
+    {
+        subtitle_receiver_->stop_audio_capture();
+    }
+    
+    subtitles_enabled_ = false;
+    
+    auto logger = Logger::get();
+    logger->info("Audio capture stopped");
+}
+
+bool StreamController::is_audio_capturing() const 
+{
+    return subtitle_receiver_ ? subtitle_receiver_->is_capturing() : false;
 }
 
 net::awaitable<void> StreamController::start_streaming(int camera_index, const std::string& resolution, int fps) 
@@ -167,11 +316,24 @@ net::awaitable<void> StreamController::broadcast_frame(const std::string& frame)
 {
     co_await net::dispatch(strand_, net::use_awaitable);
     
+    std::string subtitle = get_current_subtitle();
+    
+    // Создаем JSON с фреймом и субтитрами
+    nlohmann::json frame_data;
+    frame_data["frame"] = frame;
+    
+    if (!subtitle.empty())
+    {
+        frame_data["subtitles"] = subtitle;
+    }
+    
+    std::string message = frame_data.dump();
+    
     for (auto it = viewers_.begin(); it != viewers_.end(); ) 
     {
         if (auto viewer = it->lock()) 
         {
-            viewer->send_frame(frame);
+            viewer->send_frame(message);
             ++it;
         } 
         else 

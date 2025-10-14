@@ -41,6 +41,7 @@ Server::Server(
     api_key_ = APIKeyManager::generate_key();
     stream_controller_ = std::make_shared<StreamController>(
         ioc, video_source_, ascii_converter_);
+    stream_controller_->initialize();
 
     auto logger = Logger::get();
     logger->info("Server API key: {}", api_key_);
@@ -50,6 +51,8 @@ Server::Server(
     {
         setup_cloud_tunnel();
     }
+
+    setup_subtitles();
 }
 
 Server::~Server() 
@@ -79,6 +82,11 @@ void Server::setup_cloud_tunnel()
     }
     
     logger->warn("No VK tunnel available. Direct connection only.");
+}
+
+void Server::setup_subtitles()
+{
+    stream_controller_->enable_subtitles("localhost", "9001");
 }
 
 void Server::run() 

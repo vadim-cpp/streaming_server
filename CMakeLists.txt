@@ -42,14 +42,28 @@ find_package(nlohmann_json REQUIRED)
 # Поиск spdlog
 find_package(spdlog REQUIRED)
 
-# Поиск curl
+# Поиск CURL
 find_package(CURL REQUIRED)
 
 # Поиск OpenSSL
 find_package(OpenSSL REQUIRED)
 
-# Поиск CURL
-find_package(CURL REQUIRED)
+# Поиск PortAudio через vcpkg (правильный способ)
+if(CMAKE_TOOLCHAIN_FILE)
+    # Используем vcpkg для поиска PortAudio
+    find_package(portaudio CONFIG REQUIRED)
+    message(STATUS "Found PortAudio via vcpkg")
+else()
+    # Альтернативный поиск если vcpkg не используется
+    find_path(PORTAUDIO_INCLUDE_DIR portaudio.h)
+    find_library(PORTAUDIO_LIBRARY portaudio)
+    
+    if(PORTAUDIO_INCLUDE_DIR AND PORTAUDIO_LIBRARY)
+        message(STATUS "Found PortAudio: ${PORTAUDIO_LIBRARY}")
+    else()
+        message(FATAL_ERROR "PortAudio not found. Install it via vcpkg: vcpkg install portaudio")
+    endif()
+endif()
 
 # Список исходных файлов для сервера
 set(SERVER_SOURCES
@@ -66,6 +80,7 @@ set(SERVER_SOURCES
     src/vk_tunnel.cpp
     src/record_controller.cpp
     src/playback_controller.cpp
+    src/subtitle_receiver.cpp
 )
 
 # Создание исполняемого файла для сервера
@@ -75,7 +90,6 @@ add_executable(server ${SERVER_SOURCES})
 target_include_directories(server PRIVATE 
     include
     ${OpenCV_INCLUDE_DIRS}
-    ${OPENSSL_INCLUDE_DIR}
 )
 
 # Линковка с библиотеками
@@ -90,6 +104,16 @@ target_link_libraries(server PRIVATE
     OpenSSL::Crypto
 )
 
+# Линковка PortAudio в зависимости от способа поиска
+if(CMAKE_TOOLCHAIN_FILE)
+    # Через vcpkg
+    target_link_libraries(server PRIVATE portaudio)
+else()
+    # Через ручной поиск
+    target_include_directories(server PRIVATE ${PORTAUDIO_INCLUDE_DIR})
+    target_link_libraries(server PRIVATE ${PORTAUDIO_LIBRARY})
+endif()
+
 # Платформозависимые настройки линковки
 if(WIN32)
     target_link_libraries(server PRIVATE 
@@ -101,9 +125,14 @@ if(WIN32)
         winmm
         iphlpapi
         crypt32
+        winmm  # Добавляем для PortAudio на Windows
     )
 elseif(UNIX)
-    target_link_libraries(server PRIVATE pthread)
+    target_link_libraries(server PRIVATE 
+        pthread
+        # Для Linux могут понадобиться дополнительные библиотеки для PortAudio
+        asound  # ALSA для Linux
+    )
 endif()
 
 # Копирование веб-ресурсов

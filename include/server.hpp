@@ -35,6 +35,8 @@ public:
 
     std::string cloud_tunnel_url() const { return cloud_tunnel_url_; }
     void setup_cloud_tunnel();
+
+    void setup_subtitles();
     
 private:
     void do_accept();

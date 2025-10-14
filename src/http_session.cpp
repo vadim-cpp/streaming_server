@@ -5,6 +5,7 @@
 #include "logger.hpp"
 #include "network_utils.hpp"
 #include "api_key_manager.hpp"
+#include "common_types.hpp"
 
 #include <nlohmann/json.hpp>
 #include <fstream>
@@ -330,7 +331,32 @@ void HttpSession::handle_request()
         http::write(stream_, res);
         return;
     }
-    
+
+    if (request_.target() == "/microphones") 
+    {
+        auto logger = Logger::get();
+        logger->debug("Handling /microphones request");
+        
+        auto microphones = server_->stream_controller()->list_microphones();
+        
+        nlohmann::json j;
+        for (const auto& mic : microphones) {
+            j.push_back({
+                {"index", mic.index},
+                {"name", mic.name},
+                {"id", mic.id},
+                {"sample_rate", mic.sample_rate}
+            });
+        }
+        
+        res.result(http::status::ok);
+        res.set(http::field::content_type, "application/json");
+        res.body() = j.dump();
+        
+        res.prepare_payload();
+        http::write(stream_, res);
+        return;
+    }
     if (path.back() == '/') 
     {
         logger->debug("Appending index.html to path");

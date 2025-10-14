@@ -4,11 +4,14 @@
 #include "ascii_converter_interface.hpp"
 #include "record_controller.hpp"
 #include "playback_controller.hpp"
+#include "subtitle_receiver.hpp"
+#include "common_types.hpp"
 
 #include <memory>
 #include <string>
 #include <vector>
 #include <atomic>
+#include <mutex>
 #include <boost/asio.hpp>
 #include <boost/asio/as_tuple.hpp>
 #include <boost/asio/experimental/awaitable_operators.hpp>
@@ -50,6 +53,21 @@ public:
     net::awaitable<void> stop_playback();
     net::awaitable<void> set_playback_speed(double speed);
 
+    void init_subtitle_receiver();
+
+    void enable_subtitles(const std::string& host, const std::string& port);
+    void disable_subtitles();
+    
+    // Субтитры
+    void set_current_subtitle(const std::string& subtitle);
+    std::string get_current_subtitle();
+
+    std::vector<MicrophoneInfo> list_microphones();
+    void request_microphones_list();
+    void start_audio_capture(int device_index);
+    void stop_audio_capture();
+    bool is_audio_capturing() const;
+
 private:
     net::awaitable<void> capture_loop();
     net::awaitable<void> broadcast_frame(const std::string& frame);
@@ -74,4 +92,16 @@ private:
 
     std::shared_ptr<PlaybackController> playback_controller_;
     std::shared_ptr<WebSocketSession> playback_session_;
+
+    std::string current_subtitle_;
+    std::mutex subtitle_mutex_;
+    std::shared_ptr<SubtitleReceiver> subtitle_receiver_;
+    std::vector<MicrophoneInfo> cached_microphones_;
+    bool microphones_loaded_ = false;
+
+    bool subtitles_enabled_ = false;
+
+    // Конфигурация сервера субтитров
+    std::string subtitle_host_ = "localhost";
+    std::string subtitle_port_ = "9001";
 };

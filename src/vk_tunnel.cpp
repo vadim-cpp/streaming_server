@@ -75,7 +75,7 @@ std::string VKTunnel::setup_tunnel(int port)
             size_t end = line.find(".vk-apps.com");
             if (end != std::string::npos) 
             {
-                tunnel_url = line.substr(start, end - start + 14);
+                tunnel_url = line.substr(start, end - start + 12);
                 break;
             }
         }

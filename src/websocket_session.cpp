@@ -328,7 +328,39 @@ net::awaitable<void> WebSocketSession::handle_message(const std::string& message
         {
             controller_->stop_recording();
             send_frame("RECORDING_STOPPED");
-        } 
+        }
+        else if (type == "enable_subtitles" && is_controller_) 
+        {
+            std::string host = j.value("host", "localhost");
+            std::string port = j.value("port", "9001");
+            
+            controller_->enable_subtitles(host, port);
+            send_frame("SUBTITLES_ENABLED");
+        }
+        else if (type == "disable_subtitles" && is_controller_) 
+        {
+            controller_->disable_subtitles();
+            send_frame("SUBTITLES_DISABLED");
+        }
+        else if (type == "start_audio_capture" && is_controller_) 
+        {
+            int microphone_index = j.value("microphone_index", -1);
+            
+            if (microphone_index >= 0) 
+            {
+                controller_->start_audio_capture(microphone_index);
+                send_frame("AUDIO_CAPTURE_STARTED");
+            } 
+            else 
+            {
+                send_frame("ERROR: Invalid microphone index");
+            }
+        }
+        else if (type == "stop_audio_capture" && is_controller_) 
+        {
+            controller_->stop_audio_capture();
+            send_frame("AUDIO_CAPTURE_STOPPED");
+        }
         else 
         {
             send_frame("UNKNOWN_COMMAND");
